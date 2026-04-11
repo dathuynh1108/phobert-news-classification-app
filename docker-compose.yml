@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vnn-postgres
+    environment:
+      POSTGRES_DB: vnn_ml
+      POSTGRES_USER: vnn
+      POSTGRES_PASSWORD: vnn
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vnn -d vnn_ml"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  model-service:
+    build:
+      context: ./model-service
+    container_name: vnn-model-service
+    environment:
+      VNN_AI_ACTIVE_ARTIFACT_DIR: /dataset/artifacts/active
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./dataset/artifacts:/dataset/artifacts
+
+  api-service:
+    build:
+      context: ./api-service
+    container_name: vnn-api-service
+    environment:
+      VNN_AI_SERVICE_HOST: model-service
+      VNN_AI_SERVICE_PORT: 50051
+      VNN_DB_HOST: postgres
+      VNN_DB_PORT: 5432
+      VNN_DB_NAME: vnn_ml
+      VNN_DB_USER: vnn
+      VNN_DB_PASSWORD: vnn
+    depends_on:
+      postgres:
+        condition: service_healthy
+      model-service:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+  ui:
+    build:
+      context: ./ui
+    container_name: vnn-ui
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api
+    depends_on:
+      api-service:
+        condition: service_started
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
