@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 
-import { fetchMonitoring } from "../lib/api";
+import { fetchMonitoring, recomputeMonitoring } from "../lib/api";
 import { MonitoringScreen } from "../lib/types";
 import { translateLabel } from "../lib/utils";
-import { AppShell, ProgressList, StatCard, Surface, ToneBadge, VerticalBars } from "../components/ui";
+import { AppShell, ProgressList, StatCard, Surface, ToneBadge, ToneButton, VerticalBars } from "../components/ui";
 
 export function MonitoringPage() {
   const [data, setData] = useState<MonitoringScreen | null>(null);
+  const [isRecomputing, setIsRecomputing] = useState(false);
+  const [jobStatus, setJobStatus] = useState("");
 
   useEffect(() => {
     fetchMonitoring().then(setData).catch(console.error);
@@ -16,8 +18,33 @@ export function MonitoringPage() {
     return <div className="loading-state">Loading monitoring dashboard...</div>;
   }
 
+  async function handleRecompute() {
+    setIsRecomputing(true);
+    try {
+      const job = await recomputeMonitoring();
+      setJobStatus(`Queued ${job.jobType} job ${job.jobId}`);
+    } finally {
+      setIsRecomputing(false);
+    }
+  }
+
+  const lastRunLabel = data.lastRunAt ? new Date(data.lastRunAt).toLocaleString() : "N/A";
+
   return (
     <AppShell chips={data.chips} heading={data.heading} subheading={data.subheading} sidebar={data.sidebar}>
+      <Surface>
+        <div className="section-heading">
+          <div>
+            <h3>Evaluation snapshot</h3>
+            <p>Last recomputed at {lastRunLabel} from predictions, editor decisions, and live queue state.</p>
+          </div>
+          <ToneButton className="compact-button" disabled={isRecomputing} onClick={handleRecompute}>
+            {isRecomputing ? "Queueing..." : "Recompute"}
+          </ToneButton>
+        </div>
+        {jobStatus ? <p className="job-status">{jobStatus}</p> : null}
+      </Surface>
+
       <section className="stats-grid">
         {data.stats.map((item, index) => (
           <StatCard item={item} index={index} key={item.label} />
@@ -55,13 +82,17 @@ export function MonitoringPage() {
             </div>
           </div>
           <div className="analysis-grid">
-            {data.articleAnalysis.map((item) => (
-              <div className="analysis-card reveal" key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.note}</small>
-              </div>
-            ))}
+            {data.articleAnalysis.length ? (
+              data.articleAnalysis.map((item) => (
+                <div className="analysis-card reveal" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.note}</small>
+                </div>
+              ))
+            ) : (
+              <p className="empty-state">N/A</p>
+            )}
           </div>
         </Surface>
 
@@ -73,15 +104,19 @@ export function MonitoringPage() {
             </div>
           </div>
           <div className="feedback-list">
-            {data.driftBreakdown.map((item) => (
-              <div className="feedback-row reveal" key={item.label}>
-                <div>
-                  <strong>{item.label}</strong>
-                  <span>{item.detail}</span>
+            {data.driftBreakdown.length ? (
+              data.driftBreakdown.map((item) => (
+                <div className="feedback-row reveal" key={item.label}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.detail}</span>
+                  </div>
+                  <ToneBadge tone={item.tone}>{item.label}</ToneBadge>
                 </div>
-                <ToneBadge tone={item.tone}>{item.label}</ToneBadge>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="empty-state">N/A</p>
+            )}
           </div>
         </Surface>
       </div>

@@ -21,7 +21,7 @@ const roles = [
 export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("editor@vnn-lab.edu.vn");
-  const [password, setPassword] = useState("demo-password");
+  const [password, setPassword] = useState("vnn-password");
   const [role, setRole] = useState<(typeof roles)[number]["id"]>("editor-admin");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,32 +50,12 @@ export function LoginPage() {
         <h1>Newsroom label routing for Vietnamese content</h1>
         <p>
           Sign in by role to review category predictions, confidence bands, editorial queues, and model quality dashboards powered
-          by PhoBERT base v2.
+          by the active PhoBERT package.
         </p>
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <strong>19 labels</strong>
-            <span>VietnamNet desks and categories</span>
-          </div>
-          <div className="hero-stat">
-            <strong>Macro F1 0.82</strong>
-            <span>Current PhoBERT package</span>
-          </div>
-          <div className="hero-stat">
-            <strong>128 queued stories</strong>
-            <span>Editorial queue today</span>
-          </div>
-        </div>
-        <div className="hero-preview">
-          <strong>Dashboard preview</strong>
-          <div className="preview-line wide" />
-          <div className="preview-line" />
-          <div className="preview-line short" />
-          <div className="preview-actions">
-            <button type="button" className="preview-pill primary" />
-            <button type="button" className="preview-pill" />
-            <div className="preview-block" />
-          </div>
+        <div className="hero-points">
+          <span>19-label VietnamNet taxonomy</span>
+          <span>Artifact-backed PhoBERT inference only</span>
+          <span>Redis + Dramatiq worker for heavy jobs</span>
         </div>
       </section>
       <section className="login-panel reveal">

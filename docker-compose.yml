@@ -16,21 +16,34 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    container_name: vnn-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   model-service:
     build:
       context: ./model-service
     container_name: vnn-model-service
     environment:
-      VNN_AI_ACTIVE_ARTIFACT_DIR: /dataset/artifacts/active
+      VNN_AI_ACTIVE_ARTIFACT_DIR: /artifacts/active
     ports:
       - "50051:50051"
     volumes:
-      - ./dataset/artifacts:/dataset/artifacts
+      - ./model-service/app:/app/app
+      - ./train/artifacts:/artifacts
 
   api-service:
     build:
       context: ./api-service
     container_name: vnn-api-service
+    command: ["uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       VNN_AI_SERVICE_HOST: model-service
       VNN_AI_SERVICE_PORT: 50051
@@ -39,13 +52,50 @@ services:
       VNN_DB_NAME: vnn_ml
       VNN_DB_USER: vnn
       VNN_DB_PASSWORD: vnn
+      VNN_ARTIFACTS_DIR: /artifacts
+      VNN_REDIS_URL: redis://redis:6379/0
+      VNN_WORKER_DEFAULT_QUEUE: vnn-worker
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       model-service:
         condition: service_started
     ports:
       - "8000:8000"
+    volumes:
+      - ./api-service/app:/app/app
+      - ./train/artifacts:/artifacts
+
+  worker-service:
+    build:
+      context: .
+      dockerfile: worker-service/Dockerfile
+    container_name: vnn-worker-service
+    environment:
+      VNN_AI_SERVICE_HOST: model-service
+      VNN_AI_SERVICE_PORT: 50051
+      VNN_DB_HOST: postgres
+      VNN_DB_PORT: 5432
+      VNN_DB_NAME: vnn_ml
+      VNN_DB_USER: vnn
+      VNN_DB_PASSWORD: vnn
+      VNN_ARTIFACTS_DIR: /artifacts
+      VNN_REDIS_URL: redis://redis:6379/0
+      VNN_WORKER_DEFAULT_QUEUE: vnn-worker
+      VNN_ENABLE_WORKER_SCHEDULER: "true"
+      VNN_DRIFT_MONITORING_CRON: "*/30 * * * *"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      model-service:
+        condition: service_started
+    volumes:
+      - ./api-service/app:/app/app
+      - ./train/artifacts:/artifacts
 
   ui:
     build:
@@ -53,11 +103,17 @@ services:
     container_name: vnn-ui
     environment:
       VITE_API_BASE_URL: http://localhost:8000/api
+      CHOKIDAR_USEPOLLING: "true"
     depends_on:
       api-service:
         condition: service_started
+      worker-service:
+        condition: service_started
     ports:
       - "5173:5173"
+    volumes:
+      - ./ui:/app
+      - /app/node_modules
 
 volumes:
   postgres_data:

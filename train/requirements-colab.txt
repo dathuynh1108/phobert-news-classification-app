@@ -11,4 +11,6 @@ scipy
 accelerate
 pyvi
 joblib
-
+requests
+beautifulsoup4
+lxml

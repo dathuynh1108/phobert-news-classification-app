@@ -16,8 +16,9 @@ venv/
 *.pyd
 *.log
 *.tsbuildinfo
-dataset/artifacts/*
-!dataset/artifacts/.gitkeep
+dataset/*
+!dataset/README.md
+train/runs/
 api-service/.venv/
 model-service/.venv/
 tmp/

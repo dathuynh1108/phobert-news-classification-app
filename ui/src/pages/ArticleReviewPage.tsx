@@ -3,11 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { fetchReviewArticle, inferArticle, submitDecision } from "../lib/api";
 import { InferenceResponse, ReviewArticleScreen } from "../lib/types";
-import { cn, formatScore, translateLabel } from "../lib/utils";
+import { formatScore, translateLabel } from "../lib/utils";
 import { AppShell, ProgressList, Surface, ToneBadge, ToneButton } from "../components/ui";
 
 export function ArticleReviewPage() {
-  const { articleId = "art-002" } = useParams();
+  const { articleId } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<ReviewArticleScreen | null>(null);
   const [selectedLabel, setSelectedLabel] = useState("");
@@ -16,6 +16,10 @@ export function ArticleReviewPage() {
   const [isInferring, setIsInferring] = useState(false);
 
   useEffect(() => {
+    if (!articleId) {
+      navigate("/editor/dashboard");
+      return;
+    }
     fetchReviewArticle(articleId)
       .then((payload) => {
         setData(payload);
@@ -23,7 +27,7 @@ export function ArticleReviewPage() {
         setLastInference(null);
       })
       .catch(console.error);
-  }, [articleId]);
+  }, [articleId, navigate]);
 
   const content = useMemo(() => data?.article.paragraphs.join("\n\n") ?? "", [data]);
 
@@ -140,7 +144,7 @@ export function ArticleReviewPage() {
             <div className="section-heading">
               <div>
                 <h3>Prediction summary</h3>
-                <p>Final output from the PhoBERT package currently serving the demo environment.</p>
+                <p>Final output from the PhoBERT package currently serving this environment.</p>
               </div>
             </div>
             <ToneBadge tone="navy" subtle>
@@ -206,7 +210,7 @@ export function ArticleReviewPage() {
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Add notes for the next training cycle or routing rule update..."
               />
-              <small className={cn("history-note", lastInference?.used_fallback && "warning")}>
+              <small className="history-note">
                 {lastInference ? `Inference ${decisionLabel} · ${lastInference.latency_ms}ms` : data.decisionControls.history}
               </small>
             </div>

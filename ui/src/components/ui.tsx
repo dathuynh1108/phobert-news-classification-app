@@ -2,6 +2,7 @@ import { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
 
 import { SidebarData, StatCardData, Tone } from "../lib/types";
+import { getSession } from "../lib/session";
 import { cn, formatPercent, formatScore, hrefForSidebarItem, toneClassMap } from "../lib/utils";
 
 export function Surface({ className, children }: PropsWithChildren<{ className?: string }>) {
@@ -37,6 +38,12 @@ export function AppShell({
   subheading: string;
   sidebar: SidebarData;
 }>) {
+  const session = getSession();
+  const sidebarItems = sidebar.items.flatMap((item) => {
+    const href = hrefForSidebarItem(item.id, session?.role);
+    return href ? [{ ...item, href }] : [];
+  });
+
   return (
     <div className="screen-shell">
       <header className="screen-header reveal">
@@ -62,8 +69,8 @@ export function AppShell({
             <span>{sidebar.activeModel}</span>
           </div>
           <nav className="sidebar-nav">
-            {sidebar.items.map((item) => (
-              <Link key={item.id} className={cn("sidebar-link", item.active && "active")} to={hrefForSidebarItem(item.id)}>
+            {sidebarItems.map((item) => (
+              <Link key={item.id} className={cn("sidebar-link", item.active && "active")} to={item.href}>
                 <span className="sidebar-dot" />
                 {item.label}
               </Link>
@@ -101,6 +108,10 @@ export function ProgressList({
   suffix?: "value" | "percent";
   compact?: boolean;
 }) {
+  if (!items.length) {
+    return <p className="empty-state">N/A</p>;
+  }
+
   return (
     <div className={cn("progress-list", compact && "compact")}>
       {items.map((item, index) => (
@@ -117,6 +128,10 @@ export function ProgressList({
 }
 
 export function VerticalBars({ values }: { values: number[] }) {
+  if (!values.length) {
+    return <p className="empty-state">N/A</p>;
+  }
+
   return (
     <div className="spark-bars">
       {values.map((value, index) => (

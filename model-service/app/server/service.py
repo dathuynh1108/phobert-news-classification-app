@@ -41,7 +41,6 @@ class ClassifierGrpcService:
             rationale_keywords=response["rationale_keywords"],
             auto_decision=response["auto_decision"],
             latency_ms=response["latency_ms"],
-            used_fallback=response["used_fallback"],
         )
 
     def build_server(self, host: str, port: int, workers: int) -> grpc.Server:

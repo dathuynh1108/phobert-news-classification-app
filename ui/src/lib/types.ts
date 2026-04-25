@@ -1,4 +1,5 @@
 export type Tone = "navy" | "teal" | "coral" | "green" | "violet" | "gold" | "pink" | "muted";
+export type RoleType = "editor-admin" | "data-scientist";
 
 export interface Chip {
   label: string;
@@ -56,6 +57,10 @@ export interface EditorDashboardScreen {
     totalPages: number;
   };
   categoryDistribution: ProgressDatum[];
+  confidenceSummary: {
+    value: number | null;
+    label: string;
+  };
   sharedSignals: Array<{ label: string; pill: string; tone: Tone }>;
   feedbackLoop: Array<{ title: string; body: string; pill: string; tone: Tone }>;
 }
@@ -105,6 +110,7 @@ export interface AdminOpsScreen {
   routingRules: ProgressDatum[];
   auditLog: string[];
   deploymentSnapshot: Array<{ label: string; value: string }>;
+  candidateModelRun: { id: string; backbone: string; uploaded: string; f1: number; state: string } | null;
   thresholds: {
     auto_approve: number;
     review_floor: number;
@@ -122,6 +128,7 @@ export interface MonitoringScreen {
   labelScores: ProgressDatum[];
   articleAnalysis: Array<{ label: string; value: string; note: string }>;
   driftBreakdown: Array<{ label: string; detail: string; tone: Tone }>;
+  lastRunAt: string | null;
 }
 
 export interface ModelVersionsScreen {
@@ -131,7 +138,7 @@ export interface ModelVersionsScreen {
   subheading: string;
   sidebar: SidebarData;
   runs: Array<{ id: string; backbone: string; uploaded: string; f1: number; state: string }>;
-  selectedRun: { id: string; backbone: string; uploaded: string; f1: number; state: string };
+  selectedRun: { id: string; backbone: string; uploaded: string; f1: number; state: string } | null;
   comparisonCards: Array<{ label: string; value: string; detail: string }>;
   confusionMatrix: number[][];
   packageDetails: Array<{ label: string; value: string }>;
@@ -154,7 +161,7 @@ export interface DatasetLabScreen {
 export interface LoginResponse {
   token: string;
   email: string;
-  role: "editor-admin" | "data-scientist";
+  role: RoleType;
   redirect: string;
   activeModel: string;
 }
@@ -171,6 +178,10 @@ export interface InferenceResponse {
   rationale_keywords: string[];
   auto_decision: string;
   latency_ms: number;
-  used_fallback: boolean;
 }
 
+export interface WorkerJobResponse {
+  status: string;
+  jobId: string;
+  jobType: string;
+}

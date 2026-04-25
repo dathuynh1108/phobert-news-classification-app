@@ -1,7 +1,10 @@
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import quote_plus
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -18,6 +21,13 @@ class Settings(BaseSettings):
     db_password: str = "vnn"
     db_connect_timeout_seconds: int = 5
     db_schema: str = "public"
+    redis_url: str = "redis://127.0.0.1:6379/0"
+    worker_default_queue: str = "vnn-worker"
+    worker_job_ttl_seconds: int = 60 * 60 * 24 * 7
+    enable_worker_scheduler: bool = False
+    drift_monitoring_cron: str = "*/30 * * * *"
+    artifacts_dir: Path = REPO_ROOT / "train/artifacts"
+    article_fetch_timeout_seconds: float = 8.0
 
     model_config = SettingsConfigDict(
         env_prefix="VNN_",
@@ -35,4 +45,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

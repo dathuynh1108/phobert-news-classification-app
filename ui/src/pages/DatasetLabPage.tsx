@@ -43,16 +43,16 @@ export function DatasetLabPage() {
             </div>
           </div>
           <div className="sample-list">
-            {data.hardSamples.map((sample) => (
-              <div className="sample-row reveal" key={sample.title}>
-                <span>{sample.title}</span>
-                <ToneBadge tone="coral">{sample.score.toFixed(2)}</ToneBadge>
-              </div>
-            ))}
-          </div>
-          <div className="panel-footer">
-            <span>Showing 3 of 214 hard samples</span>
-            <span>1/72</span>
+            {data.hardSamples.length ? (
+              data.hardSamples.map((sample) => (
+                <div className="sample-row reveal" key={sample.title}>
+                  <span>{sample.title}</span>
+                  <ToneBadge tone="coral">{sample.score.toFixed(2)}</ToneBadge>
+                </div>
+              ))
+            ) : (
+              <p className="empty-state">No low-confidence articles are available yet.</p>
+            )}
           </div>
         </Surface>
       </div>
@@ -63,11 +63,6 @@ export function DatasetLabPage() {
             <h3>Active learning loop</h3>
             <p>Turn overrides, low-confidence samples, and drift signals into the next relabel batch.</p>
           </div>
-        </div>
-        <div className="chip-row">
-          <ToneBadge tone="navy" subtle>
-            Refresh batch every 6 hours
-          </ToneBadge>
         </div>
         <div className="analysis-grid four-up">
           {data.activeLearning.map((item) => (
@@ -81,11 +76,15 @@ export function DatasetLabPage() {
         </div>
         <div className="chip-row">
           <span className="priority-label">Priority labels</span>
-          {data.priorityLabels.map((label, index) => (
-            <ToneBadge key={label} tone={index === 0 ? "coral" : index === 1 ? "teal" : "gold"} subtle>
-              {translateLabel(label)}
-            </ToneBadge>
-          ))}
+          {data.priorityLabels.length ? (
+            data.priorityLabels.map((label, index) => (
+              <ToneBadge key={label} tone={index === 0 ? "coral" : index === 1 ? "teal" : "gold"} subtle>
+                {translateLabel(label)}
+              </ToneBadge>
+            ))
+          ) : (
+            <span className="empty-state">No priority labels yet.</span>
+          )}
         </div>
       </Surface>
     </AppShell>

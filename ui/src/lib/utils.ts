@@ -1,4 +1,4 @@
-import { Tone } from "./types";
+import { RoleType, Tone } from "./types";
 
 export const toneClassMap: Record<Tone, string> = {
   navy: "tone-navy",
@@ -69,15 +69,41 @@ export function toneForLabel(label: string): Tone {
   return "muted";
 }
 
-export function hrefForSidebarItem(itemId: string): string {
-  const map: Record<string, string> = {
-    dashboard: "/editor/dashboard",
-    review: "/editor/review/art-002",
-    classifier: "/editor/review/art-002",
-    admin: "/editor/admin",
-    monitoring: "/scientist/monitoring",
-    versions: "/scientist/versions",
-    dataset: "/scientist/dataset",
-  };
-  return map[itemId] ?? "/";
+const sidebarHrefMap: Record<string, string> = {
+  dashboard: "/editor/dashboard",
+  review: "/editor/dashboard",
+  classifier: "/editor/dashboard",
+  admin: "/editor/admin",
+  monitoring: "/scientist/monitoring",
+  versions: "/scientist/versions",
+  dataset: "/scientist/dataset",
+};
+
+const roleSidebarItems: Record<RoleType, Set<string>> = {
+  "editor-admin": new Set(["dashboard", "review", "classifier", "admin"]),
+  "data-scientist": new Set(["monitoring", "versions", "dataset"]),
+};
+
+const rolePathPrefixes: Record<RoleType, string[]> = {
+  "editor-admin": ["/editor/dashboard", "/editor/review", "/editor/admin"],
+  "data-scientist": ["/scientist/monitoring", "/scientist/versions", "/scientist/dataset"],
+};
+
+export function defaultPathForRole(role: RoleType): string {
+  return role === "editor-admin" ? "/editor/dashboard" : "/scientist/monitoring";
+}
+
+export function isPathAllowedForRole(pathname: string, role: RoleType): boolean {
+  return rolePathPrefixes[role].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+export function isSidebarItemAllowedForRole(itemId: string, role: RoleType): boolean {
+  return roleSidebarItems[role].has(itemId);
+}
+
+export function hrefForSidebarItem(itemId: string, role?: RoleType): string | null {
+  if (role && !isSidebarItemAllowedForRole(itemId, role)) {
+    return null;
+  }
+  return sidebarHrefMap[itemId] ?? null;
 }

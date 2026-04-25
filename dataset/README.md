@@ -1,8 +1,21 @@
 # Dataset
 
-Đặt dữ liệu parquet cho notebook PhoBERT trong thư mục này.
+This directory stores the dataset inputs and generated parquet files used by the PhoBERT notebook in `train/`.
+The dataset directory is ignored by git except this README. Keep model packages in `train/artifacts/`, not here.
 
-Kỳ vọng tối thiểu:
+The materialized dataset is hosted on Hugging Face:
+
+- `https://huggingface.co/datasets/dathuynh1108/vietnamnet-news`
+
+The upstream URL lists are included here:
+
+- `data_URLs.json`
+- `data_URLs_empty_content.json`
+- `data_URLs_empty_title.json`
+
+The upstream GitHub repository provides URL lists, not ready-to-train article content in parquet format. `train/notebooks/main_PhoBERT.ipynb` uses `data_URLs.json` to crawl article title/content and create any missing parquet files.
+
+Expected files after materialization include:
 
 - `dataset/ban-doc.parquet`
 - `dataset/bao-ve-nguoi-tieu-dung.parquet`
@@ -10,10 +23,16 @@ Kỳ vọng tối thiểu:
 - `...`
 - `dataset/van-hoa-giai-tri.parquet`
 
-Artifact inference có thể export vào `dataset/artifacts/active/` để `model-service` load trực tiếp:
+Materialize the dataset manually with:
 
-- `config.json`
-- `model.safetensors` hoặc `pytorch_model.bin`
-- tokenizer files
-- `label_config.json`
-- `thresholds.json`
+```bash
+python train/scripts/materialize_vietnamnet_dataset.py
+```
+
+Useful options:
+
+```bash
+python train/scripts/materialize_vietnamnet_dataset.py --max-urls-per-category 100
+python train/scripts/materialize_vietnamnet_dataset.py --force
+python train/scripts/materialize_vietnamnet_dataset.py --dataset-dir dataset
+```

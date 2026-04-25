@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { fetchAdminOps, updateThresholds } from "../lib/api";
+import { fetchAdminOps, inviteUser, promoteModelFromAdmin, updateThresholds } from "../lib/api";
 import { AdminOpsScreen } from "../lib/types";
 import { AppShell, ProgressList, Surface, ToneBadge, ToneButton } from "../components/ui";
 
@@ -8,6 +8,14 @@ export function AdminOpsPage() {
   const [data, setData] = useState<AdminOpsScreen | null>(null);
   const [autoApprove, setAutoApprove] = useState(0.75);
   const [reviewFloor, setReviewFloor] = useState(0.68);
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState<"editor-admin" | "data-scientist">("editor-admin");
+  const [inviteQueue, setInviteQueue] = useState("All queues");
+  const [invitePassword, setInvitePassword] = useState("vnn-password");
+  const [isInviting, setIsInviting] = useState(false);
 
   function statusLabel(status: string) {
     return status === "Active" ? "online" : "idle";
@@ -31,6 +39,45 @@ export function AdminOpsPage() {
     const next = await updateThresholds({ auto_approve: autoApprove, review_floor: reviewFloor });
     setAutoApprove(next.auto_approve);
     setReviewFloor(next.review_floor);
+    setData(await fetchAdminOps());
+  }
+
+  async function handleInvite() {
+    if (!inviteEmail || !invitePassword) {
+      return;
+    }
+    setIsInviting(true);
+    try {
+      await inviteUser({
+        email: inviteEmail,
+        name: inviteName || inviteEmail,
+        password: invitePassword,
+        role: inviteRole,
+        queue: inviteQueue,
+      });
+      setData(await fetchAdminOps());
+      setInviteEmail("");
+      setInviteName("");
+      setInviteRole("editor-admin");
+      setInviteQueue("All queues");
+      setInvitePassword("vnn-password");
+      setInviteOpen(false);
+    } finally {
+      setIsInviting(false);
+    }
+  }
+
+  async function handlePromote() {
+    if (!data?.candidateModelRun) {
+      return;
+    }
+    setIsPromoting(true);
+    try {
+      await promoteModelFromAdmin(data.candidateModelRun.id);
+      setData(await fetchAdminOps());
+    } finally {
+      setIsPromoting(false);
+    }
   }
 
   return (
@@ -42,8 +89,40 @@ export function AdminOpsPage() {
               <h3>Users & permissions</h3>
               <p>Track who is handling each queue and who can promote a package.</p>
             </div>
-            <ToneButton className="compact-button">Invite user</ToneButton>
+            <ToneButton className="compact-button" onClick={() => setInviteOpen((value) => !value)}>
+              Invite user
+            </ToneButton>
           </div>
+          {inviteOpen ? (
+            <div className="inline-form">
+              <label>
+                <span>Work email</span>
+                <input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} type="email" />
+              </label>
+              <label>
+                <span>Name</span>
+                <input value={inviteName} onChange={(event) => setInviteName(event.target.value)} />
+              </label>
+              <label>
+                <span>Role</span>
+                <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as "editor-admin" | "data-scientist")}>
+                  <option value="editor-admin">Editor / Admin</option>
+                  <option value="data-scientist">Data Scientist</option>
+                </select>
+              </label>
+              <label>
+                <span>Queue</span>
+                <input value={inviteQueue} onChange={(event) => setInviteQueue(event.target.value)} />
+              </label>
+              <label>
+                <span>Temporary password</span>
+                <input value={invitePassword} onChange={(event) => setInvitePassword(event.target.value)} type="password" />
+              </label>
+              <ToneButton disabled={isInviting || !inviteEmail || invitePassword.length < 8} onClick={handleInvite}>
+                {isInviting ? "Inviting..." : "Create user"}
+              </ToneButton>
+            </div>
+          ) : null}
           <div className="table-shell">
             <table>
               <thead>
@@ -89,7 +168,9 @@ export function AdminOpsPage() {
             </label>
             <div className="inline-actions">
               <ToneButton onClick={handleSave}>Save rules</ToneButton>
-              <ToneButton tone="muted">Promote package</ToneButton>
+              <ToneButton disabled={!data.candidateModelRun || isPromoting} onClick={handlePromote} tone="muted">
+                {isPromoting ? "Promoting..." : data.candidateModelRun ? `Promote ${data.candidateModelRun.id}` : "No package"}
+              </ToneButton>
             </div>
           </div>
         </Surface>

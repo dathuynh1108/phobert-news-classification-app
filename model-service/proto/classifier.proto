@@ -25,10 +25,8 @@ message ClassifyResponse {
   repeated string rationale_keywords = 7;
   string auto_decision = 8;
   int32 latency_ms = 9;
-  bool used_fallback = 10;
 }
 
 service ClassifierService {
   rpc ClassifyArticle(ClassifyRequest) returns (ClassifyResponse);
 }
-
