@@ -7,17 +7,14 @@ Recommended flow:
 
 1. Upload this repo to Colab or mount it from Google Drive.
 2. Open `train/notebooks/main_PhoBERT.ipynb`.
-3. Run all cells. If `/content/dataset` is empty, the notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face. If you provide only `data_URLs.json`, it can create missing parquet files.
+3. Run all cells. If `./dataset` is empty, the notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face. If you provide only `data_URLs.json`, it can create missing parquet files.
 4. After training, package or copy the artifact into `train/artifacts/active/`.
 
 Colab quick start:
 
-```python
-!git clone https://github.com/<your-org-or-user>/phobert-news-classification-app.git
-%cd /content/phobert-news-classification-app
-```
+Run the notebook from the folder you want to use as the workspace root. It creates `dataset/`, `train/runs/`, and `train/artifacts/` under that current directory.
 
-By default, the notebook downloads the dataset from `https://huggingface.co/datasets/dathuynh1108/vietnamnet-news` into `/content/dataset`. You can still upload a dataset folder manually or edit `DATASET_DIR` in notebook Section 0.3.
+By default, the notebook downloads the dataset from `https://huggingface.co/datasets/dathuynh1108/vietnamnet-news` into `./dataset`. You can still upload a dataset folder manually or edit `DATASET_DIR` in notebook Section 0.3.
 
 If the Hugging Face dataset is private, add a Colab secret named `HF_TOKEN`; do not hardcode tokens into the notebook.
 

@@ -214,7 +214,7 @@ Endpoints:
 ## Train flow
 
 1. Open `train/notebooks/main_PhoBERT.ipynb` in Colab.
-2. Run all cells. The notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face when `/content/dataset` is empty, or materializes parquet files from `dataset/data_URLs.json` when provided.
+2. Run all cells. The notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face when `./dataset` is empty, or materializes parquet files from `dataset/data_URLs.json` when provided.
 3. Train the model.
 4. Package the output:
 
