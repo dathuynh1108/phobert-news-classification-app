@@ -21,10 +21,11 @@ If the Hugging Face dataset is private, add a Colab secret named `HF_TOKEN`; do 
 All Colab/runtime knobs are centralized in notebook Section 0.3:
 
 - `VNN_MAX_ROWS_PER_CLASS=0` trains on the full dataset by default. Keep this for final runs; use a positive value only for quick smoke tests.
-- `VNN_PARQUET_BATCH_SIZE=2048` controls parquet read batches.
+- `VNN_PARQUET_BATCH_SIZE=20480` controls parquet read batches.
 - `VNN_PREPROCESS_BATCH_SIZE=512` and `VNN_PREPROCESS_N_JOBS=2` control ViTokenizer batches.
 - `VNN_RAW_CONTENT_HEAD_WORDS=220` and `VNN_RAW_CONTENT_TAIL_WORDS=80` keep compact head/tail article text in RAM.
 - CUDA batch defaults are selected from detected VRAM. Override with `VNN_BATCH_SIZE`, `VNN_GRAD_ACCUM`, `VNN_EVAL_BATCH`, or `VNN_NUM_EPOCHS` only when needed.
+- If multiple CUDA GPUs are visible, `BATCH_SIZE` is per GPU and the notebook computes the global effective batch as `BATCH_SIZE * VNN_GRAD_ACCUM * GPU_COUNT`.
 - Trainer, cache, smoke-test, and calibration knobs are also defined in Section 0.3, so later notebook cells should not need manual edits.
 
 The notebook was adapted from the upstream repo:
