@@ -1109,6 +1109,39 @@ th {
   font-weight: 700;
 }
 
+.heat-matrix.dense {
+  gap: 0.22rem;
+  min-height: 0;
+}
+
+.heat-matrix.dense .heat-axis,
+.heat-matrix.dense .heat-cell {
+  min-height: 2.05rem;
+  border-radius: 0.25rem;
+}
+
+.heat-matrix.dense .heat-axis {
+  min-width: 2.05rem;
+  padding: 0.16rem 0.2rem;
+  font-size: 0.6rem;
+}
+
+.heat-matrix.dense .heat-axis-column {
+  max-width: 2.05rem;
+}
+
+.heat-matrix.dense .heat-axis-row {
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heat-matrix.dense .heat-cell {
+  min-width: 2.05rem;
+  font-size: 0.62rem;
+}
+
 .active-learning-panel {
   display: grid;
   gap: 1rem;

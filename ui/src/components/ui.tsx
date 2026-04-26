@@ -251,9 +251,14 @@ export function HeatMatrix({ values, labels }: { values: number[][]; labels?: st
 
   const hasLabels = Boolean(labels?.length);
   const columns = values[0]?.length ?? 1;
+  const isDense = hasLabels && Math.max(labels?.length ?? 0, columns) > 12;
   const maxValue = Math.max(...values.flat(), 1);
   const gridStyle: CSSProperties = {
-    gridTemplateColumns: hasLabels ? `minmax(8rem, 1.25fr) repeat(${labels?.length ?? columns}, minmax(3rem, 1fr))` : `repeat(${columns}, minmax(0, 1fr))`,
+    gridTemplateColumns: hasLabels
+      ? isDense
+        ? `minmax(7rem, 7rem) repeat(${labels?.length ?? columns}, 2.05rem)`
+        : `minmax(8rem, 1.25fr) repeat(${labels?.length ?? columns}, minmax(3rem, 1fr))`
+      : `repeat(${columns}, minmax(0, 1fr))`,
   };
 
   function opacityFor(cell: number) {
@@ -264,16 +269,16 @@ export function HeatMatrix({ values, labels }: { values: number[][]; labels?: st
   if (hasLabels && labels) {
     return (
       <div className="heat-matrix-scroll">
-        <div className="heat-matrix labeled" style={gridStyle}>
-          <div className="heat-axis heat-corner">Actual / Pred</div>
-          {labels.map((label) => (
+        <div className={`heat-matrix labeled${isDense ? " dense" : ""}`} style={gridStyle}>
+          <div className="heat-axis heat-corner">{isDense ? "Actual" : "Actual / Pred"}</div>
+          {labels.map((label, index) => (
             <div className="heat-axis heat-axis-column" key={`pred-${label}`} title={label}>
-              {label}
+              {isDense ? index + 1 : label}
             </div>
           ))}
           {values.flatMap((row, rowIndex) => [
             <div className="heat-axis heat-axis-row" key={`actual-${labels[rowIndex]}`} title={labels[rowIndex]}>
-              {labels[rowIndex]}
+              {isDense ? `${rowIndex + 1}. ${labels[rowIndex]}` : labels[rowIndex]}
             </div>,
             ...row.map((cell, cellIndex) => (
               <div
