@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { AlertTriangle, CheckCircle2, Play, RotateCcw } from "lucide-react";
 
-import { fetchReviewArticle, inferArticle, submitDecision } from "../lib/api";
+import { fetchReviewArticle, inferArticle, refreshArticleFromUrl, submitDecision } from "../lib/api";
 import { InferenceResponse, ReviewArticleScreen } from "../lib/types";
 import { formatScore, translateLabel } from "../lib/utils";
 import { AppShell, ProgressList, Surface, ToneBadge, ToneButton } from "../components/ui";
@@ -11,19 +12,21 @@ export function ArticleReviewPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<ReviewArticleScreen | null>(null);
   const [selectedLabel, setSelectedLabel] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [lastInference, setLastInference] = useState<InferenceResponse | null>(null);
   const [isInferring, setIsInferring] = useState(false);
 
   useEffect(() => {
     if (!articleId) {
-      navigate("/editor/dashboard");
+      navigate("/editor/review");
       return;
     }
     fetchReviewArticle(articleId)
       .then((payload) => {
         setData(payload);
         setSelectedLabel(payload.decisionControls.primaryLabel);
+        setSourceUrl(payload.article.url);
         setLastInference(null);
       })
       .catch(console.error);
@@ -43,7 +46,7 @@ export function ArticleReviewPage() {
         "auto-approve": "auto-approved",
         review: "under review",
         escalate: "escalated",
-      }[lastInference.auto_decision] ?? lastInference.auto_decision
+      }[lastInference.autoDecision] ?? lastInference.autoDecision
     : null;
 
   async function handleInference() {
@@ -52,11 +55,21 @@ export function ArticleReviewPage() {
     }
     setIsInferring(true);
     try {
+      if (sourceUrl && sourceUrl !== data.article.url) {
+        const refreshed = await refreshArticleFromUrl(data.article.id, {
+          sourceUrl,
+          topK: 3,
+        });
+        setData(refreshed);
+        setSelectedLabel(refreshed.decisionControls.primaryLabel);
+        setLastInference(null);
+        return;
+      }
       const result = await inferArticle(data.article.id, {
         title: data.article.title,
         content,
-        source_url: data.article.url,
-        top_k: 3,
+        sourceUrl,
+        topK: 3,
       });
       setLastInference(result);
       setSelectedLabel(result.label);
@@ -74,19 +87,19 @@ export function ArticleReviewPage() {
       selected_label: action === "override" ? selectedLabel : predictionLabel,
       notes,
     });
-    navigate("/editor/dashboard");
+    navigate("/editor/review");
   }
 
   return (
     <AppShell chips={data.chips} heading={data.heading} subheading={data.subheading} sidebar={data.sidebar}>
       <Surface className="review-topbar">
         <label className="review-url">
-          <span>Article under analysis</span>
-          <input readOnly value={data.article.url} />
+          <span>Source URL</span>
+          <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} />
         </label>
         <div className="inline-actions">
-          <ToneButton onClick={handleInference}>{isInferring ? "Running..." : "Run inference"}</ToneButton>
-          <ToneButton tone="coral" onClick={() => handleDecision("escalate")}>
+          <ToneButton icon={<Play aria-hidden="true" size={15} />} onClick={handleInference}>{isInferring ? "Running..." : "Run inference"}</ToneButton>
+          <ToneButton icon={<AlertTriangle aria-hidden="true" size={15} />} tone="coral" onClick={() => handleDecision("escalate")}>
             Escalate
           </ToneButton>
         </div>
@@ -157,7 +170,7 @@ export function ArticleReviewPage() {
             <div className="hero-progress">
               <div className="hero-progress-fill" style={{ width: `${predictionConfidence * 100}%` }} />
             </div>
-            <small>{lastInference?.model_version ?? data.predictionSummary.package}</small>
+            <small>{lastInference?.modelVersion ?? data.predictionSummary.package}</small>
           </Surface>
 
           <Surface>
@@ -191,7 +204,7 @@ export function ArticleReviewPage() {
               </div>
             </div>
             <div className="decision-stack">
-              <ToneButton onClick={() => handleDecision("approve")}>Approve label</ToneButton>
+              <ToneButton icon={<CheckCircle2 aria-hidden="true" size={15} />} onClick={() => handleDecision("approve")}>Approve label</ToneButton>
               <div className="decision-row">
                 <select className="label-select" value={selectedLabel} onChange={(event) => setSelectedLabel(event.target.value)}>
                   {data.decisionControls.labels.map((label) => (
@@ -200,10 +213,13 @@ export function ArticleReviewPage() {
                     </option>
                   ))}
                 </select>
-                <ToneButton tone="muted" onClick={() => handleDecision("override")}>
+                <ToneButton icon={<RotateCcw aria-hidden="true" size={15} />} tone="muted" onClick={() => handleDecision("override")}>
                   Override label
                 </ToneButton>
               </div>
+              <ToneButton icon={<AlertTriangle aria-hidden="true" size={15} />} tone="coral" onClick={() => handleDecision("escalate")}>
+                Flag to DS
+              </ToneButton>
               <textarea
                 className="note-box"
                 value={notes}
@@ -211,7 +227,7 @@ export function ArticleReviewPage() {
                 placeholder="Add notes for the next training cycle or routing rule update..."
               />
               <small className="history-note">
-                {lastInference ? `Inference ${decisionLabel} · ${lastInference.latency_ms}ms` : data.decisionControls.history}
+                {lastInference ? `Inference ${decisionLabel} · ${lastInference.latencyMs}ms` : data.decisionControls.history}
               </small>
             </div>
           </Surface>

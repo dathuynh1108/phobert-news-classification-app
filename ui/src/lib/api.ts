@@ -8,11 +8,27 @@ import {
   MonitoringScreen,
   RoleType,
   ReviewArticleScreen,
+  ReviewListScreen,
+  ThresholdImpact,
   WorkerJobResponse,
 } from "./types";
 import { getSession } from "./session";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+
+function camelizeKey(key: string) {
+  return key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
+}
+
+function camelizeKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(camelizeKeys);
+  }
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [camelizeKey(key), camelizeKeys(entry)]));
+  }
+  return value;
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const session = getSession();
@@ -28,7 +44,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }
-  return (await response.json()) as T;
+  return camelizeKeys(await response.json()) as T;
 }
 
 export function login(payload: { email: string; password: string; role: RoleType }) {
@@ -48,10 +64,25 @@ export function fetchEditorDashboard(page = 1) {
   return request<EditorDashboardScreen>(`/editor/dashboard?page=${page}`);
 }
 
-export function importArticle(payload: { title?: string; content?: string; source_url?: string; source?: string; label_hint?: string; run_inference?: boolean }) {
+export function fetchReviewQueue(page = 1) {
+  return request<ReviewListScreen>(`/editor/review?page=${page}`);
+}
+
+export function fetchLabelReview(page = 1) {
+  return request<ReviewListScreen>(`/editor/classifier?page=${page}`);
+}
+
+export function importArticle(payload: { title?: string; content?: string; sourceUrl?: string; source?: string; labelHint?: string; runInference?: boolean }) {
   return request<WorkerJobResponse>(`/editor/articles/jobs`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      title: payload.title,
+      content: payload.content,
+      source_url: payload.sourceUrl,
+      source: payload.source,
+      label_hint: payload.labelHint,
+      run_inference: payload.runInference,
+    }),
   });
 }
 
@@ -59,10 +90,25 @@ export function fetchReviewArticle(articleId: string) {
   return request<ReviewArticleScreen>(`/editor/articles/${articleId}`);
 }
 
-export function inferArticle(articleId: string, payload: { title: string; content: string; source_url?: string; top_k?: number }) {
+export function inferArticle(articleId: string, payload: { title: string; content: string; sourceUrl?: string; topK?: number }) {
   return request<InferenceResponse>(`/editor/articles/${articleId}/infer`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      title: payload.title,
+      content: payload.content,
+      source_url: payload.sourceUrl,
+      top_k: payload.topK,
+    }),
+  });
+}
+
+export function refreshArticleFromUrl(articleId: string, payload: { sourceUrl: string; topK?: number }) {
+  return request<ReviewArticleScreen>(`/editor/articles/${articleId}/infer-url`, {
+    method: "POST",
+    body: JSON.stringify({
+      source_url: payload.sourceUrl,
+      top_k: payload.topK,
+    }),
   });
 }
 
@@ -73,8 +119,16 @@ export function submitDecision(articleId: string, payload: { action: string; sel
   });
 }
 
-export function fetchAdminOps() {
-  return request<AdminOpsScreen>("/admin/ops");
+export function fetchAdminOps(params: { userPage?: number; auditPage?: number } = {}) {
+  const search = new URLSearchParams();
+  if (params.userPage) {
+    search.set("user_page", String(params.userPage));
+  }
+  if (params.auditPage) {
+    search.set("audit_page", String(params.auditPage));
+  }
+  const query = search.toString();
+  return request<AdminOpsScreen>(`/admin/ops${query ? `?${query}` : ""}`);
 }
 
 export function inviteUser(payload: { email: string; name: string; role: RoleType; queue: string; password: string }) {
@@ -84,10 +138,27 @@ export function inviteUser(payload: { email: string; name: string; role: RoleTyp
   });
 }
 
-export function updateThresholds(payload: { auto_approve: number; review_floor: number }) {
-  return request<{ auto_approve: number; review_floor: number }>("/admin/ops/thresholds", {
-    method: "POST",
+export function updateUser(
+  email: string,
+  payload: { name?: string; role?: RoleType; queue?: string; status?: string; password?: string },
+) {
+  return request<{ email: string; name: string; role: string; queue: string; status: string }>(`/admin/users/${encodeURIComponent(email)}`, {
+    method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateThresholds(payload: { autoApprove: number; reviewFloor: number }) {
+  return request<{ autoApprove: number; reviewFloor: number }>("/admin/ops/thresholds", {
+    method: "POST",
+    body: JSON.stringify({ auto_approve: payload.autoApprove, review_floor: payload.reviewFloor }),
+  });
+}
+
+export function previewThresholdImpact(payload: { autoApprove: number; reviewFloor: number }) {
+  return request<ThresholdImpact>("/admin/ops/thresholds/preview", {
+    method: "POST",
+    body: JSON.stringify({ auto_approve: payload.autoApprove, review_floor: payload.reviewFloor }),
   });
 }
 
@@ -111,15 +182,15 @@ export function fetchWorkerJob(jobId: string) {
   return request<WorkerJobResponse & { result?: unknown; error?: string | null }>(`/jobs/${jobId}`);
 }
 
-export function fetchModelVersions() {
-  return request<ModelVersionsScreen>("/scientist/model-versions");
+export function fetchModelVersions(selectedRunId?: string) {
+  const query = selectedRunId ? `?selected_run_id=${encodeURIComponent(selectedRunId)}` : "";
+  return request<ModelVersionsScreen>(`/scientist/model-versions${query}`);
 }
 
-export function uploadModelArtifacts(payload: { runId: string; backbone: string; f1: number; uploadedLabel: string; files: FileList | File[] }) {
+export function uploadModelArtifacts(payload: { runId: string; backbone: string; uploadedLabel: string; files: FileList | File[] }) {
   const form = new FormData();
   form.append("run_id", payload.runId);
   form.append("backbone", payload.backbone);
-  form.append("f1", String(payload.f1));
   form.append("uploaded_label", payload.uploadedLabel);
   Array.from(payload.files).forEach((file) => {
     form.append("files", file, (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name);
@@ -157,6 +228,6 @@ export async function downloadModelExport(runId: string, filename: string) {
   window.URL.revokeObjectURL(url);
 }
 
-export function fetchDatasetLab() {
-  return request<DatasetLabScreen>("/scientist/dataset-lab");
+export function fetchDatasetLab(samplePage = 1) {
+  return request<DatasetLabScreen>(`/scientist/dataset-lab?sample_page=${samplePage}`);
 }

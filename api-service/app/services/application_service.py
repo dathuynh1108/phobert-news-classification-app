@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 import secrets
 import shutil
 import time
 import zipfile
-from math import ceil
+from math import ceil, isfinite
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -16,6 +17,31 @@ from app.clients.classifier_client import GrpcClassifierClient
 from app.core.config import Settings
 from app.core.database import ApplicationRepository
 from app.data.seed import LABELS
+from app.schemas.models import (
+    AdminOpsResponse,
+    ArticleImportResponse,
+    DatasetLabResponse,
+    DecisionResponse,
+    EditorDashboardResponse,
+    HealthResponse,
+    InferenceResponse,
+    InvitedUserResponse,
+    LoginResponse,
+    ModelActivationResponse,
+    ModelRunResponse,
+    ModelRunUploadResponse,
+    ModelVersionsResponse,
+    MonitoringRecomputeResponse,
+    MonitoringResponse,
+    ReviewArticleResponse,
+    ReviewListResponse,
+    SidebarResponse,
+    StatusResponse,
+    ThresholdImpactResponse,
+    ThresholdResponse,
+    UserResponse,
+    WorkerJobResponse,
+)
 
 
 class AuthenticationError(Exception):
@@ -30,34 +56,42 @@ class ValidationError(Exception):
     pass
 
 
-def _sidebar(role: str, active: str, active_model: str, summary_value: str) -> dict[str, Any]:
+def _sidebar(role: str, active: str, active_model: str, summary_value: str) -> SidebarResponse:
+    is_editor_like = role in {"editor", "admin"}
     common = {
         "brand": "VNN ML Lab",
-        "summaryTitle": "PhoBERT summary" if role == "editor-admin" else "Monitoring focus",
-        "summaryValue": summary_value,
-        "summaryBody": "Review below configured floor" if role == "editor-admin" else "Synced from editorial review traffic.",
+        "summary_title": "PhoBERT summary" if is_editor_like else "Monitoring focus",
+        "summary_value": summary_value,
+        "summary_body": "Review below configured floor" if is_editor_like else "Synced from editorial review traffic.",
     }
-    if role == "editor-admin":
+    if role == "editor":
         items = [
             {"id": "dashboard", "label": "Overview"},
             {"id": "review", "label": "Review Queue"},
             {"id": "classifier", "label": "Label Review"},
+        ]
+        current_role = "Editor"
+    elif role == "admin":
+        items = [
             {"id": "admin", "label": "Admin Ops"},
         ]
-        current_role = "Editor / Admin"
-    else:
+        current_role = "Admin"
+    elif role == "data-scientist":
         items = [
             {"id": "monitoring", "label": "Monitoring"},
             {"id": "versions", "label": "Model Versions"},
             {"id": "dataset", "label": "Dataset Lab"},
         ]
         current_role = "Data Scientist"
-    return {
+    else:
+        items = []
+        current_role = "Unknown"
+    return SidebarResponse(
         **common,
-        "currentRole": current_role,
-        "activeModel": active_model,
-        "items": [{**item, "active": item["id"] == active} for item in items],
-    }
+        current_role=current_role,
+        active_model=active_model,
+        items=[{**item, "active": item["id"] == active} for item in items],
+    )
 
 
 def _tone(index: int) -> str:
@@ -143,12 +177,50 @@ def _f1(tp: int, fp: int, fn: int) -> float:
     return (2 * tp / denominator) if denominator else 0.0
 
 
+def _safe_ratio(numerator: int | float, denominator: int | float) -> float:
+    return numerator / denominator if denominator else 0.0
+
+
 def _format_score(value: float | None) -> str:
     return "N/A" if value is None else f"{value:.2f}"
 
 
 def _format_percent(value: float | None) -> str:
     return "N/A" if value is None else f"{value:.0%}"
+
+
+def _ratio_metric(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not isfinite(number):
+        return None
+    if 1.0 < number <= 100.0:
+        number /= 100.0
+    if number < 0.0 or number > 1.0:
+        return None
+    return number
+
+
+def _nested_value(payload: Any, path: tuple[str, ...]) -> Any:
+    cursor = payload
+    for key in path:
+        if not isinstance(cursor, dict) or key not in cursor:
+            return None
+        cursor = cursor[key]
+    return cursor
+
+
+def _first_ratio_metric(payloads: list[Any], paths: list[tuple[str, ...]]) -> float | None:
+    for payload in payloads:
+        for path in paths:
+            value = _ratio_metric(_nested_value(payload, path))
+            if value is not None:
+                return value
+    return None
 
 
 def _default_rationale(label: str, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -177,14 +249,20 @@ class ApplicationService:
         if user is None:
             raise AuthenticationError("Invalid email, password, or role")
         token = self._repository.create_session(email=user["email"], role=user["role"])
-        route = "/editor/dashboard" if role == "editor-admin" else "/scientist/monitoring"
-        return {
-            "token": token,
-            "email": user["email"],
-            "role": role,
-            "redirect": route,
-            "activeModel": self._repository.get_active_model(),
-        }
+        route = {
+            "admin": "/admin/ops",
+            "editor": "/editor/dashboard",
+            "data-scientist": "/scientist/monitoring",
+        }.get(role, "/")
+        return LoginResponse(
+            token=token,
+            email=user["email"],
+            name=user["name"],
+            role=user["role"],
+            display_role=user["display_role"],
+            redirect=route,
+            active_model=self._repository.get_active_model(),
+        ).to_dict()
 
     def validate_session(self, token: str) -> dict[str, Any]:
         session = self._repository.validate_session(token)
@@ -194,37 +272,60 @@ class ApplicationService:
 
     def logout(self, token: str) -> dict[str, str]:
         self._repository.revoke_session(token)
-        return {"status": "ok"}
+        return StatusResponse(status="ok").to_dict()
 
     def healthcheck(self) -> dict[str, Any]:
         db = self._repository.health_check()
         model = self._classifier.health_check()
         status = "ok" if db["ok"] and model["ok"] else "degraded"
-        return {"status": status, "database": db, "modelService": model}
+        return HealthResponse(status=status, database=db, model_service=model).to_dict()
 
     def create_worker_job(self, job_type: str, payload: dict[str, Any], created_by: str | None = None) -> dict[str, Any]:
         job_id = f"job-{int(time.time())}-{secrets.token_hex(4)}"
-        return self._repository.create_worker_job(
+        job = self._repository.create_worker_job(
             job_id=job_id,
             job_type=job_type,
             payload=payload,
             created_by=created_by,
         )
+        return WorkerJobResponse(**job).to_dict()
 
     def get_worker_job(self, job_id: str) -> dict[str, Any]:
         job = self._repository.get_worker_job(job_id)
         if job is None:
             raise NotFoundError(f"Worker job {job_id} was not found")
-        return job
+        return WorkerJobResponse(**job).to_dict()
 
     def list_worker_jobs(self, limit: int = 20) -> list[dict[str, Any]]:
-        return self._repository.list_worker_jobs(limit=limit)
+        return [WorkerJobResponse(**job).to_dict() for job in self._repository.list_worker_jobs(limit=limit)]
 
     def fail_worker_job(self, job_id: str, error: str) -> dict[str, Any] | None:
-        return self._repository.mark_worker_job_failed(job_id, error)
+        job = self._repository.mark_worker_job_failed(job_id, error)
+        return WorkerJobResponse(**job).to_dict() if job else None
 
     def invite_user(self, email: str, name: str, role: str, queue: str, password: str) -> dict[str, Any]:
-        return self._repository.create_user(email=email, name=name, role=role, queue=queue, password=password)
+        return InvitedUserResponse(**self._repository.create_user(email=email, name=name, role=role, queue=queue, password=password)).to_dict()
+
+    def update_user(
+        self,
+        email: str,
+        name: str | None,
+        role: str | None,
+        queue: str | None,
+        status: str | None,
+        password: str | None,
+    ) -> dict[str, Any]:
+        user = self._repository.update_user(
+            email=email,
+            name=name,
+            role=role,
+            queue=queue,
+            status=status,
+            password=password,
+        )
+        if user is None:
+            raise NotFoundError(f"User {email} was not found")
+        return UserResponse(**user).to_dict()
 
     def import_article(
         self,
@@ -285,13 +386,12 @@ class ApplicationService:
         )
         if run_inference:
             self._repository.record_inference(article_id=article_id, result=result, status=status, history=history)
-        return {"status": "ok", "articleId": article["id"], "article": article}
+        return ArticleImportResponse(status="ok", article_id=article["id"], article=article).to_dict()
 
     def upload_model_run(
         self,
         run_id: str,
         backbone: str,
-        f1: float,
         uploaded_label: str,
         files: list[tuple[str, bytes]],
     ) -> dict[str, Any]:
@@ -305,15 +405,27 @@ class ApplicationService:
         run_dir.mkdir(parents=True, exist_ok=True)
         self._write_artifact_payload(run_dir=run_dir, files=files)
         exports = self._validate_phobert_artifact(run_dir)
+        metadata = self._model_artifact_metadata(
+            run_dir=run_dir,
+            backbone=backbone,
+            uploaded_label=uploaded_label,
+            exports=exports,
+            strict=True,
+        )
         run = self._repository.upsert_model_run(
             run_id=run_id,
             backbone=backbone,
             uploaded_label=uploaded_label,
-            f1=f1,
+            f1=metadata["f1"],
             artifact_path=str(run_dir),
+            confusion_matrix=metadata["confusion_matrix"],
+            package_details=metadata["package_details"],
             exports=sorted(exports),
         )
-        return {"status": "ok", "run": {key: run[key] for key in ("id", "backbone", "uploaded", "f1", "state")}}
+        return ModelRunUploadResponse(
+            status="ok",
+            run=ModelRunResponse(**{key: run[key] for key in ("id", "backbone", "uploaded", "f1", "state")}),
+        ).to_dict()
 
     def get_export_path(self, run_id: str, filename: str) -> Path:
         run = self._repository.get_model_run(run_id)
@@ -338,22 +450,22 @@ class ApplicationService:
         queue, total = self._repository.list_review_articles(page=page, page_size=page_size)
         distribution = self._repository.get_category_distribution()
         decision_summary = self._repository.get_decision_summary()
-        return {
-            "screen": "editor-dashboard",
-            "chips": [
+        return EditorDashboardResponse(
+            screen="editor-dashboard",
+            chips=[
                 {"label": "VietnamNet 19 labels", "tone": "teal"},
                 {"label": active_model, "tone": "coral"},
             ],
-            "heading": "Editor Dashboard",
-            "subheading": "Track the review queue, confidence bands, and live label throughput.",
-            "sidebar": _sidebar("editor-admin", "dashboard", active_model, f"Avg confidence {_format_score(metrics['avg_confidence'] if metrics['total'] else None)}"),
-            "stats": [
+            heading="Editor Dashboard",
+            subheading="Track the review queue, confidence bands, and live label throughput.",
+            sidebar=_sidebar("editor", "dashboard", active_model, f"Avg confidence {_format_score(metrics['avg_confidence'] if metrics['total'] else None)}"),
+            stats=[
                 {"label": "Stories in corpus", "value": f"{metrics['total']:,}", "delta": "stored articles", "tone": "teal"},
                 {"label": "Needs review", "value": f"{metrics['needs_review']:,}", "delta": "open queue", "tone": "coral"},
                 {"label": "Auto-ready", "value": _format_percent(metrics["auto_rate"] if metrics["total"] else None), "delta": "above threshold or approved", "tone": "green"},
                 {"label": "Avg confidence", "value": _format_score(metrics["avg_confidence"] if metrics["total"] else None), "delta": "latest prediction score", "tone": "violet"},
             ],
-            "reviewQueue": {
+            review_queue={
                 "items": [
                     {
                         "id": article["id"],
@@ -366,26 +478,98 @@ class ApplicationService:
                 ],
                 "summary": f"Showing {len(queue)} of {total} open stories",
                 "page": page,
-                "totalPages": total_pages,
+                "total_pages": total_pages,
             },
-            "categoryDistribution": [
+            category_distribution=[
                 {"label": item["label"], "value": item["value"], "tone": _tone(index)} for index, item in enumerate(distribution)
             ],
-            "confidenceSummary": {
+            confidence_summary={
                 "value": metrics["auto_rate"] if metrics["total"] else None,
                 "label": "Auto-ready confidence",
             },
-            "sharedSignals": [
+            shared_signals=[
                 {"label": "Human overrides", "pill": str(decision_summary["override"]), "tone": "coral"},
                 {"label": "Escalations", "pill": str(decision_summary["escalate"]), "tone": "gold"},
                 {"label": "Narrow margins", "pill": str(metrics["narrow_margin"]), "tone": "teal"},
             ],
-            "feedbackLoop": [
+            feedback_loop=[
                 {"title": "Prediction stored", "body": "Every inference run is recorded for audit and retraining.", "pill": "Live", "tone": "green"},
                 {"title": "Editor decision", "body": "Approvals, overrides, and escalations are persisted as review records.", "pill": "Tracked", "tone": "gold"},
                 {"title": "Routing rules", "body": "Threshold changes update the same values used by API decisions.", "pill": "Applied", "tone": "pink"},
             ],
-        }
+        ).to_dict()
+
+    def get_review_queue(self, page: int = 1, page_size: int = 8) -> dict[str, Any]:
+        active_model = self._repository.get_active_model()
+        metrics = self._repository.get_article_metrics()
+        total_pages = ceil(metrics["needs_review"] / page_size) or 1
+        page = max(1, min(page, total_pages))
+        queue, total = self._repository.list_review_articles(page=page, page_size=page_size)
+        return ReviewListResponse(
+            screen="review-queue",
+            chips=[
+                {"label": "Open editorial queue", "tone": "coral"},
+                {"label": active_model, "tone": "teal"},
+            ],
+            heading="Review Queue",
+            subheading="Open stories that need an editor decision before routing.",
+            sidebar=_sidebar("editor", "review", active_model, f"{metrics['needs_review']} open reviews"),
+            stats=[
+                {"label": "Open reviews", "value": f"{metrics['needs_review']:,}", "delta": "queued for editor action", "tone": "coral"},
+                {"label": "Stories in corpus", "value": f"{metrics['total']:,}", "delta": "stored articles", "tone": "teal"},
+                {"label": "Auto-ready", "value": _format_percent(metrics["auto_rate"] if metrics["total"] else None), "delta": "above threshold or approved", "tone": "green"},
+            ],
+            items=[
+                {
+                    "id": article["id"],
+                    "label": article["label"],
+                    "title": article["title"],
+                    "confidence": article["confidence"],
+                    "margin": article["margin"],
+                    "status": article["status"],
+                }
+                for article in queue
+            ],
+            summary=f"Showing {len(queue)} of {total} open stories",
+            page=page,
+            total_pages=total_pages,
+        ).to_dict()
+
+    def get_label_review(self, page: int = 1, page_size: int = 10) -> dict[str, Any]:
+        active_model = self._repository.get_active_model()
+        metrics = self._repository.get_article_metrics()
+        total_pages = ceil(metrics["total"] / page_size) or 1
+        page = max(1, min(page, total_pages))
+        articles, total = self._repository.list_label_review_articles(page=page, page_size=page_size)
+        return ReviewListResponse(
+            screen="label-review",
+            chips=[
+                {"label": "All classified stories", "tone": "teal"},
+                {"label": active_model, "tone": "coral"},
+            ],
+            heading="Label Review",
+            subheading="Inspect model labels across imported stories, including auto-approved articles.",
+            sidebar=_sidebar("editor", "classifier", active_model, f"Avg confidence {_format_score(metrics['avg_confidence'] if metrics['total'] else None)}"),
+            stats=[
+                {"label": "Stories in corpus", "value": f"{metrics['total']:,}", "delta": "stored articles", "tone": "teal"},
+                {"label": "Prediction records", "value": f"{metrics['predictions']:,}", "delta": "model outputs stored", "tone": "violet"},
+                {"label": "Human decisions", "value": f"{metrics['decisions']:,}", "delta": "review actions stored", "tone": "gold"},
+            ],
+            items=[
+                {
+                    "id": article["id"],
+                    "label": article["label"],
+                    "title": article["title"],
+                    "confidence": article["confidence"],
+                    "margin": article["margin"],
+                    "status": article["status"],
+                }
+                for article in articles
+            ],
+            summary=f"Showing {len(articles)} of {total} classified stories",
+            page=page,
+            total_pages=total_pages,
+        ).to_dict()
 
     def get_review_article(self, article_id: str | None = None) -> dict[str, Any]:
         if not article_id:
@@ -397,42 +581,42 @@ class ApplicationService:
         thresholds = self._repository.get_thresholds()
         candidates = article["candidates"]
         confidence = float(article["confidence"])
-        return {
-            "screen": "article-review",
-            "chips": [
+        return ReviewArticleResponse(
+            screen="article-review",
+            chips=[
                 {"label": "VietnamNet 19 labels", "tone": "teal"},
                 {"label": active_model, "tone": "coral"},
             ],
-            "heading": "Article Classification Review",
-            "subheading": "Read the story, inspect the rationale, and confirm the label before it is routed to a desk.",
-            "sidebar": _sidebar("editor-admin", "classifier", active_model, f"Review floor {thresholds['review_floor']:.2f}"),
-            "article": {
+            heading="Article Classification Review",
+            subheading="Read the story, inspect the rationale, and confirm the label before it is routed to a desk.",
+            sidebar=_sidebar("editor", "classifier", active_model, f"Review floor {thresholds['review_floor']:.2f}"),
+            article={
                 "id": article["id"],
                 "title": article["title"],
                 "source": article["source"],
                 "paragraphs": article["paragraphs"],
                 "url": article["source_url"],
-                "rationaleBlocks": article["rationale_blocks"],
-                "similarArticles": article["similar_articles"],
+                "rationale_blocks": article["rationale_blocks"],
+                "similar_articles": article["similar_articles"],
             },
-            "predictionSummary": {
+            prediction_summary={
                 "label": candidates[0]["label"] if candidates else article["label"],
                 "confidence": confidence,
                 "package": active_model,
                 "decision": self._decision_label(confidence, thresholds),
             },
-            "candidateRanking": candidates,
-            "thresholdBands": [
+            candidate_ranking=candidates,
+            threshold_bands=[
                 {"label": f"Auto >= {thresholds['auto_approve']:.2f}", "tone": "teal"},
                 {"label": f"Review {thresholds['review_floor']:.2f}-{thresholds['auto_approve']:.2f}", "tone": "gold"},
                 {"label": f"Escalate < {thresholds['review_floor']:.2f}", "tone": "coral"},
             ],
-            "decisionControls": {
-                "primaryLabel": article["selected_label"],
+            decision_controls={
+                "primary_label": article["selected_label"],
                 "history": article["history"],
                 "labels": LABELS,
             },
-        }
+        ).to_dict()
 
     def run_inference(self, article_id: str, title: str, content: str, source_url: str | None, top_k: int) -> dict[str, Any]:
         article = self._repository.get_article(article_id)
@@ -451,7 +635,39 @@ class ApplicationService:
         }.get(result["auto_decision"], "review")
         history = f"Inference rerun - {decision_label} - {result['latency_ms']}ms"
         self._repository.record_inference(article_id=article_id, result=result, status=status, history=history)
-        return result
+        return InferenceResponse(**result).to_dict()
+
+    def refresh_article_from_url(self, article_id: str, source_url: str, top_k: int) -> dict[str, Any]:
+        article = self._repository.get_article(article_id)
+        if article is None:
+            raise NotFoundError(f"Article {article_id} was not found")
+        title, content = self._fetch_article(source_url)
+        if not title:
+            raise ValidationError("URL did not provide a usable title")
+        if not content:
+            raise ValidationError("URL did not provide usable article content")
+        result = self._classifier.classify(title=title, content=content, source_url=source_url, top_k=top_k)
+        decision_label = {
+            "auto-approve": "auto-approved",
+            "review": "under review",
+            "escalate": "escalated",
+        }.get(result["auto_decision"], result["auto_decision"])
+        status = {
+            "auto-approve": "auto_approved",
+            "review": "review",
+            "escalate": "escalated",
+        }.get(result["auto_decision"], "review")
+        history = f"URL inference rerun - {decision_label} - {result['latency_ms']}ms"
+        self._repository.update_article_content(
+            article_id=article_id,
+            title=title,
+            source_url=source_url,
+            paragraphs=_paragraphs(content),
+            rationale_blocks=_default_rationale(result["label"], result["candidates"]),
+            similar_articles=[],
+        )
+        self._repository.record_inference(article_id=article_id, result=result, status=status, history=history)
+        return self.get_review_article(article_id=article_id)
 
     def submit_decision(self, article_id: str, action: str, selected_label: str | None, notes: str | None) -> dict[str, Any]:
         article = self._repository.get_article(article_id)
@@ -472,61 +688,94 @@ class ApplicationService:
             notes=notes,
             history=history,
         )
-        return {
-            "status": "ok",
-            "articleId": article_id,
-            "action": action,
-            "selectedLabel": selected_label,
-            "notes": notes,
-        }
+        return DecisionResponse(status="ok", article_id=article_id, action=action, selected_label=selected_label, notes=notes).to_dict()
 
-    def get_admin_ops(self) -> dict[str, Any]:
+    def get_admin_ops(
+        self,
+        user_page: int = 1,
+        user_page_size: int = 3,
+        audit_page: int = 1,
+        audit_page_size: int = 3,
+    ) -> dict[str, Any]:
         active_model = self._repository.get_active_model()
         thresholds = self._repository.get_thresholds()
         metrics = self._repository.get_article_metrics()
-        model_runs = self._repository.list_model_runs()
+        model_runs = [self._enrich_model_run_from_artifact(run) for run in self._repository.list_model_runs()]
         candidate_run = next((run for run in model_runs if run["state"] == "inactive"), model_runs[0] if model_runs else None)
-        users = self._repository.list_users()
-        return {
-            "screen": "admin-ops",
-            "chips": [
+        requested_user_page = user_page
+        users, user_total = self._repository.list_users(page=user_page, page_size=user_page_size)
+        user_total_pages = ceil(user_total / user_page_size) or 1
+        user_page = max(1, min(user_page, user_total_pages))
+        if user_page != requested_user_page:
+            users, user_total = self._repository.list_users(page=user_page, page_size=user_page_size)
+        requested_audit_page = audit_page
+        audit_log, audit_total = self._repository.list_audit_log(page=audit_page, page_size=audit_page_size)
+        audit_total_pages = ceil(audit_total / audit_page_size) or 1
+        audit_page = max(1, min(audit_page, audit_total_pages))
+        if audit_page != requested_audit_page:
+            audit_log, audit_total = self._repository.list_audit_log(page=audit_page, page_size=audit_page_size)
+        threshold_impact = self._repository.preview_threshold_impact(
+            auto_approve=thresholds["auto_approve"],
+            review_floor=thresholds["review_floor"],
+        )
+        return AdminOpsResponse(
+            screen="admin-ops",
+            chips=[
                 {"label": "VietnamNet 19 labels", "tone": "teal"},
                 {"label": active_model, "tone": "coral"},
             ],
-            "heading": "Admin Operations",
-            "subheading": "Manage access, routing thresholds, and the package that serves the editorial queue.",
-            "sidebar": _sidebar("editor-admin", "admin", active_model, f"{metrics['needs_review']} open reviews"),
-            "users": users,
-            "routingRules": [
+            heading="Admin Operations",
+            subheading="Manage access, routing thresholds, and the package that serves the editorial queue.",
+            sidebar=_sidebar("admin", "admin", active_model, f"{metrics['needs_review']} open reviews"),
+            users=users,
+            user_pagination={
+                "page": user_page,
+                "total_pages": user_total_pages,
+                "summary": f"Showing {len(users)} of {user_total} users",
+            },
+            routing_rules=[
                 {"label": f"Auto-approve >= {thresholds['auto_approve']:.2f}", "value": thresholds["auto_approve"], "tone": "navy"},
                 {"label": f"Review floor >= {thresholds['review_floor']:.2f}", "value": thresholds["review_floor"], "tone": "gold"},
                 {"label": "Escalate below review floor", "value": max(0, thresholds["review_floor"] - 0.07), "tone": "coral"},
             ],
-            "auditLog": self._repository.list_audit_log(),
-            "deploymentSnapshot": [
+            audit_log=audit_log,
+            audit_pagination={
+                "page": audit_page,
+                "total_pages": audit_total_pages,
+                "summary": f"Showing {len(audit_log)} of {audit_total} events",
+            },
+            deployment_snapshot=[
                 {"label": "Active model", "value": active_model},
                 {"label": "Thresholds", "value": f"{thresholds['review_floor']:.2f}-{thresholds['auto_approve']:.2f}"},
-                {"label": "Active accounts", "value": f"{sum(1 for user in users if user['status'] == 'Active')} accounts"},
+                {"label": "Accounts", "value": f"{user_total} users"},
                 {"label": "Model runs", "value": f"{len(model_runs)} packages"},
             ],
-            "candidateModelRun": {key: candidate_run[key] for key in ("id", "backbone", "uploaded", "f1", "state")} if candidate_run else None,
-            "thresholds": thresholds,
-        }
+            candidate_model_run={key: candidate_run[key] for key in ("id", "backbone", "uploaded", "f1", "state")} if candidate_run else None,
+            thresholds=thresholds,
+            threshold_impact=threshold_impact,
+        ).to_dict()
 
     def update_thresholds(self, auto_approve: float, review_floor: float) -> dict[str, Any]:
         if review_floor > auto_approve:
             raise ValidationError("review_floor must be less than or equal to auto_approve")
-        return self._repository.update_thresholds(auto_approve=auto_approve, review_floor=review_floor)
+        return ThresholdResponse(**self._repository.update_thresholds(auto_approve=auto_approve, review_floor=review_floor)).to_dict()
+
+    def preview_threshold_impact(self, auto_approve: float, review_floor: float) -> dict[str, Any]:
+        if review_floor > auto_approve:
+            raise ValidationError("review_floor must be less than or equal to auto_approve")
+        return ThresholdImpactResponse(
+            **self._repository.preview_threshold_impact(auto_approve=auto_approve, review_floor=review_floor)
+        ).to_dict()
 
     def recompute_monitoring(self) -> dict[str, Any]:
         snapshot = self._build_monitoring_snapshot()
         if snapshot is None:
-            return {
-                "status": "skipped",
-                "id": None,
-                "reason": "No reviewed prediction data is available yet",
-            }
-        return {"status": "ok", **self._repository.save_monitoring_run(snapshot)}
+            return MonitoringRecomputeResponse(
+                status="skipped",
+                id=None,
+                reason="No reviewed prediction data is available yet",
+            ).to_dict()
+        return MonitoringRecomputeResponse(status="ok", **self._repository.save_monitoring_run(snapshot)).to_dict()
 
     def get_monitoring(self) -> dict[str, Any]:
         active_model = self._repository.get_active_model()
@@ -545,48 +794,57 @@ class ApplicationService:
             if metrics["total"] or snapshot
             else "No monitoring data"
         )
-        return {
-            "screen": "monitoring",
-            "chips": [
+        return MonitoringResponse(
+            screen="monitoring",
+            chips=[
                 {"label": "VietnamNet 19 labels", "tone": "teal"},
                 {"label": active_model, "tone": "coral"},
             ],
-            "heading": "Model Monitoring",
-            "subheading": "Monitor quality, error share, and drift on the live traffic flowing through the system.",
-            "sidebar": _sidebar("data-scientist", "monitoring", active_model, sidebar_summary),
-            "stats": [
+            heading="Model Monitoring",
+            subheading="Monitor quality, error share, and drift on the live traffic flowing through the system.",
+            sidebar=_sidebar("data-scientist", "monitoring", active_model, sidebar_summary),
+            stats=[
                 {"label": "Macro F1", "value": _format_score(snapshot["macro_f1"] if snapshot else None), "delta": f"snapshot {snapshot['id']}" if snapshot else "Needs reviewed predictions", "tone": "teal"},
                 {"label": "Error share", "value": _format_score(snapshot["error_share"] if snapshot else None), "delta": "reviewed prediction errors", "tone": "coral"},
                 {"label": "Drift score", "value": _format_score(drift_score), "delta": "margin and review drift" if metrics["total"] else "No stored articles", "tone": "gold"},
                 {"label": "Coverage", "value": _format_percent(coverage), "delta": "auto-ready stories" if metrics["total"] else "No stored articles", "tone": "green"},
             ],
-            "macroSeries": macro_series,
-            "labelScores": [{"label": item["label"], "value": item["value"], "tone": _tone(index)} for index, item in enumerate(snapshot["label_scores"])] if snapshot else [],
-            "articleAnalysis": snapshot["article_analysis"] if snapshot else [],
-            "driftBreakdown": snapshot["drift_breakdown"] if snapshot else [],
-            "lastRunAt": snapshot["created_at"] if snapshot else None,
-        }
+            macro_series=macro_series,
+            label_scores=[{"label": item["label"], "value": item["value"], "tone": _tone(index)} for index, item in enumerate(snapshot["label_scores"])] if snapshot else [],
+            confusion_matrix=snapshot["confusion_matrix"] if snapshot else {"labels": [], "matrix": []},
+            per_class_metrics=snapshot["per_class_metrics"] if snapshot else [],
+            article_analysis=snapshot["article_analysis"] if snapshot else [],
+            drift_breakdown=snapshot["drift_breakdown"] if snapshot else [],
+            last_run_at=snapshot["created_at"] if snapshot else None,
+        ).to_dict()
 
-    def get_model_versions(self) -> dict[str, Any]:
+    def get_model_versions(self, selected_run_id: str | None = None) -> dict[str, Any]:
         active_model = self._repository.get_active_model()
-        runs = self._repository.list_model_runs()
-        selected = next((run for run in runs if run["state"] == "inactive"), runs[0] if runs else None)
-        return {
-            "screen": "model-versions",
-            "chips": [
+        runs = [self._enrich_model_run_from_artifact(run) for run in self._repository.list_model_runs()]
+        if selected_run_id:
+            selected = next((run for run in runs if run["id"] == selected_run_id), None)
+            if selected is None:
+                raise NotFoundError(f"Model run {selected_run_id} was not found")
+        else:
+            selected = next((run for run in runs if run["state"] == "inactive"), runs[0] if runs else None)
+        confusion = self._model_run_confusion(selected)
+        return ModelVersionsResponse(
+            screen="model-versions",
+            chips=[
                 {"label": "VietnamNet 19 labels", "tone": "teal"},
                 {"label": active_model, "tone": "coral"},
             ],
-            "heading": "Model Versions",
-            "subheading": "Compare offline runs before promoting a new package into the editorial queue.",
-            "sidebar": _sidebar("data-scientist", "versions", active_model, f"{len(runs)} packages"),
-            "runs": [{key: run[key] for key in ("id", "backbone", "uploaded", "f1", "state")} for run in runs],
-            "selectedRun": {key: selected[key] for key in ("id", "backbone", "uploaded", "f1", "state")} if selected else None,
-            "comparisonCards": self._model_comparison_cards(selected),
-            "confusionMatrix": selected["confusion_matrix"] if selected else [],
-            "packageDetails": selected["package_details"] if selected else [],
-            "exports": selected["exports"] if selected else [],
-        }
+            heading="Model Versions",
+            subheading="Compare offline runs before promoting a new package into the editorial queue.",
+            sidebar=_sidebar("data-scientist", "versions", active_model, f"{len(runs)} packages"),
+            runs=[{key: run[key] for key in ("id", "backbone", "uploaded", "f1", "state")} for run in runs],
+            selected_run={key: selected[key] for key in ("id", "backbone", "uploaded", "f1", "state")} if selected else None,
+            comparison_cards=self._model_comparison_cards(selected),
+            confusion_matrix=confusion["matrix"],
+            confusion_labels=confusion["labels"],
+            package_details=selected["package_details"] if selected else [],
+            exports=selected["exports"] if selected else [],
+        ).to_dict()
 
     def activate_model(self, run_id: str) -> dict[str, Any]:
         run = self._repository.get_model_run(run_id)
@@ -598,41 +856,53 @@ class ApplicationService:
         active_model = self._repository.activate_model(run_id=run_id)
         if active_model is None:
             raise NotFoundError(f"Model run {run_id} was not found")
-        return {"status": "ok", "activeModel": active_model, "runId": run_id, "activeArtifact": active_artifact}
+        return ModelActivationResponse(status="ok", active_model=active_model, run_id=run_id, active_artifact=active_artifact).to_dict()
 
-    def get_dataset_lab(self) -> dict[str, Any]:
+    def get_dataset_lab(self, sample_page: int = 1, sample_page_size: int = 4) -> dict[str, Any]:
         active_model = self._repository.get_active_model()
         metrics = self._repository.get_article_metrics()
         distribution = self._repository.get_category_distribution()
-        low_confidence = self._repository.list_low_confidence_articles(limit=4)
-        hard_samples = self._repository.list_dataset_samples(category="hard_sample", limit=4)
+        low_confidence, low_confidence_total = self._repository.list_low_confidence_articles(page=sample_page, page_size=sample_page_size)
+        sample_total_pages = ceil(low_confidence_total / sample_page_size) or 1
+        sample_page = max(1, min(sample_page, sample_total_pages))
+        if low_confidence_total and not low_confidence:
+            low_confidence, low_confidence_total = self._repository.list_low_confidence_articles(page=sample_page, page_size=sample_page_size)
+        fallback_samples = self._repository.list_dataset_samples(category="hard_sample", limit=sample_page_size)
         priority_labels = [item["title"] for item in self._repository.list_dataset_samples(category="priority_label", limit=5)]
         decision_summary = self._repository.get_decision_summary()
         relabel_ready = decision_summary["override"] + decision_summary["escalate"]
-        return {
-            "screen": "dataset-lab",
-            "chips": [
+        hard_samples = low_confidence if low_confidence else fallback_samples
+        hard_sample_total = low_confidence_total if low_confidence_total else len(fallback_samples)
+        sample_total_pages = ceil(hard_sample_total / sample_page_size) or 1
+        return DatasetLabResponse(
+            screen="dataset-lab",
+            chips=[
                 {"label": "VietnamNet 19 labels", "tone": "teal"},
                 {"label": active_model, "tone": "coral"},
             ],
-            "heading": "Dataset Lab",
-            "subheading": "Track dataset health, label imbalance, hard samples, and active-learning batches in one workspace.",
-            "sidebar": _sidebar("data-scientist", "dataset", active_model, f"{relabel_ready} relabel candidates"),
-            "stats": [
+            heading="Dataset Lab",
+            subheading="Track dataset health, label imbalance, hard samples, and active-learning batches in one workspace.",
+            sidebar=_sidebar("data-scientist", "dataset", active_model, f"{relabel_ready} relabel candidates"),
+            stats=[
                 {"label": "Stored articles", "value": str(metrics["total"]), "delta": "available for evaluation", "tone": "muted"},
-                {"label": "Low-confidence pool", "value": str(len(low_confidence)), "delta": "lowest current scores", "tone": "coral"},
+                {"label": "Low-confidence pool", "value": str(hard_sample_total), "delta": "lowest current scores", "tone": "coral"},
                 {"label": "Drift score", "value": _format_score(min(1.0, metrics["narrow_margin"] / metrics["total"]) if metrics["total"] else None), "delta": "margin-based watch score" if metrics["total"] else "No stored articles", "tone": "teal"},
             ],
-            "imbalance": [{"label": item["label"], "value": item["value"], "tone": _tone(index)} for index, item in enumerate(distribution)],
-            "hardSamples": low_confidence + hard_samples,
-            "activeLearning": [
-                {"title": "Low-confidence pool", "value": str(len(low_confidence)), "body": "Stories with low confidence or tight margins.", "pill": "Input", "tone": "coral"},
+            imbalance=[{"label": item["label"], "value": item["value"], "tone": _tone(index)} for index, item in enumerate(distribution)],
+            hard_samples=hard_samples,
+            hard_sample_pagination={
+                "page": sample_page,
+                "total_pages": sample_total_pages,
+                "summary": f"Showing {len(hard_samples)} of {hard_sample_total} hard samples",
+            },
+            active_learning=[
+                {"title": "Low-confidence pool", "value": str(hard_sample_total), "body": "Stories with low confidence or tight margins.", "pill": "Input", "tone": "coral"},
                 {"title": "Override queue", "value": str(decision_summary["override"]), "body": "Human overrides waiting for the next annotation refresh.", "pill": "Review", "tone": "gold"},
                 {"title": "Escalation queue", "value": str(decision_summary["escalate"]), "body": "Stories routed to Data Science.", "pill": "Watch", "tone": "teal"},
                 {"title": "Relabel batch", "value": str(relabel_ready), "body": "Priority records for the next training cycle.", "pill": "Ready", "tone": "green"},
             ],
-            "priorityLabels": priority_labels,
-        }
+            priority_labels=priority_labels,
+        ).to_dict()
 
     def _model_comparison_cards(self, selected: dict[str, Any] | None) -> list[dict[str, str]]:
         if selected is None:
@@ -652,15 +922,39 @@ class ApplicationService:
         pairs = self._repository.get_prediction_decision_pairs()
         if not pairs:
             return None
-        labels = sorted({row["predicted_label"] for row in pairs} | {row["actual_label"] for row in pairs})
+        observed_labels = {row["predicted_label"] for row in pairs} | {row["actual_label"] for row in pairs}
+        labels = [label for label in LABELS if label in observed_labels]
+        labels.extend(sorted(observed_labels - set(labels)))
+        label_index = {label: index for index, label in enumerate(labels)}
+        matrix = [[0 for _ in labels] for _ in labels]
+        for row in pairs:
+            matrix[label_index[row["actual_label"]]][label_index[row["predicted_label"]]] += 1
+
+        per_class_metrics: list[dict[str, Any]] = []
         label_scores: list[dict[str, Any]] = []
-        for label in labels:
-            tp = sum(1 for row in pairs if row["predicted_label"] == label and row["actual_label"] == label)
-            fp = sum(1 for row in pairs if row["predicted_label"] == label and row["actual_label"] != label)
-            fn = sum(1 for row in pairs if row["predicted_label"] != label and row["actual_label"] == label)
-            label_scores.append({"label": label, "value": round(_f1(tp, fp, fn), 4)})
+        for index, label in enumerate(labels):
+            tp = matrix[index][index]
+            fp = sum(row[index] for row in matrix) - tp
+            fn = sum(matrix[index]) - tp
+            support = sum(matrix[index])
+            precision = _safe_ratio(tp, tp + fp)
+            recall = _safe_ratio(tp, tp + fn)
+            f1 = _f1(tp, fp, fn)
+            per_class_metrics.append(
+                {
+                    "label": label,
+                    "precision": round(precision, 4),
+                    "recall": round(recall, 4),
+                    "f1": round(f1, 4),
+                    "support": support,
+                    "tp": tp,
+                    "fp": fp,
+                    "fn": fn,
+                }
+            )
+            label_scores.append({"label": label, "value": round(f1, 4)})
         mistakes = sum(1 for row in pairs if row["predicted_label"] != row["actual_label"])
-        macro_f1 = sum(item["value"] for item in label_scores) / len(label_scores) if label_scores else 0.0
+        macro_f1 = sum(item["f1"] for item in per_class_metrics) / len(per_class_metrics) if per_class_metrics else 0.0
         error_share = mistakes / len(pairs)
 
         margin_component = metrics["narrow_margin"] / max(metrics["total"], 1)
@@ -672,6 +966,8 @@ class ApplicationService:
             "drift_score": round(drift_score, 4),
             "coverage": round(metrics["auto_rate"], 4),
             "label_scores": label_scores,
+            "confusion_matrix": {"labels": labels, "matrix": matrix},
+            "per_class_metrics": per_class_metrics,
             "article_analysis": [
                 {"label": "Open review queue", "value": str(metrics["needs_review"]), "note": "Articles still waiting for a human or policy decision"},
                 {"label": "Reviewed predictions", "value": str(len(pairs)), "note": "Latest predictions joined with editor decisions"},
@@ -723,6 +1019,150 @@ class ApplicationService:
             raise ValidationError("artifact zip is not a valid zip file") from exc
         finally:
             archive_path.unlink(missing_ok=True)
+
+    def _read_artifact_json(self, path: Path, strict: bool = False) -> Any:
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            if strict:
+                raise ValidationError(f"artifact metadata is not valid JSON: {path.name}") from exc
+            return None
+
+    def _matrix_payload(self, payload: Any) -> dict[str, Any]:
+        labels: list[str] = []
+        matrix_source: Any = None
+        if isinstance(payload, dict):
+            raw_labels = payload.get("labels") or payload.get("classes") or []
+            if isinstance(raw_labels, list):
+                labels = [str(label) for label in raw_labels]
+            matrix_source = payload.get("matrix") or payload.get("confusion_matrix") or payload.get("values")
+            if matrix_source is None:
+                matrix_source = payload.get("normalized_matrix")
+        elif isinstance(payload, list):
+            matrix_source = payload
+        matrix: list[list[float]] = []
+        if isinstance(matrix_source, list):
+            for row in matrix_source:
+                if not isinstance(row, list):
+                    return {"labels": labels, "matrix": []}
+                matrix_row: list[float] = []
+                for value in row:
+                    try:
+                        matrix_row.append(float(value))
+                    except (TypeError, ValueError):
+                        return {"labels": labels, "matrix": []}
+                matrix.append(matrix_row)
+        return {"labels": labels, "matrix": matrix}
+
+    def _model_artifact_metadata(
+        self,
+        run_dir: Path,
+        backbone: str,
+        uploaded_label: str,
+        exports: list[str],
+        strict: bool = False,
+        fallback_f1: float = 0.0,
+    ) -> dict[str, Any]:
+        metrics = self._read_artifact_json(run_dir / "metrics.json", strict=strict) or {}
+        thresholds = self._read_artifact_json(run_dir / "thresholds.json", strict=strict) or {}
+        report = self._read_artifact_json(run_dir / "classification_report.json", strict=strict) or {}
+        confusion = self._read_artifact_json(run_dir / "confusion_matrix.json", strict=strict)
+        metric_sources = [metrics, thresholds, report]
+        macro_f1 = _first_ratio_metric(
+            metric_sources,
+            [
+                ("metrics_after", "f1_macro"),
+                ("metrics_after", "macro_f1"),
+                ("metrics", "f1_macro"),
+                ("metrics", "macro_f1"),
+                ("macro avg", "f1-score"),
+                ("f1_macro",),
+                ("macro_f1",),
+                ("validation_f1",),
+            ],
+        )
+        weighted_f1 = _first_ratio_metric(
+            metric_sources,
+            [
+                ("metrics_after", "f1_weighted"),
+                ("metrics_after", "weighted_f1"),
+                ("weighted avg", "f1-score"),
+                ("f1_weighted",),
+                ("weighted_f1",),
+            ],
+        )
+        accuracy = _first_ratio_metric(
+            metric_sources,
+            [
+                ("metrics_after", "accuracy"),
+                ("accuracy",),
+            ],
+        )
+        before_f1 = _first_ratio_metric(
+            metric_sources,
+            [
+                ("metrics_before", "f1_macro"),
+                ("metrics_before", "macro_f1"),
+            ],
+        )
+        parsed_f1 = macro_f1 if macro_f1 is not None else (_ratio_metric(fallback_f1) or 0.0)
+        confusion_payload = self._matrix_payload(confusion)
+
+        package_details = [
+            {"label": "Backbone", "value": backbone},
+            {"label": "Artifact path", "value": str(run_dir)},
+            {"label": "Files", "value": str(len(exports))},
+            {"label": "Import source", "value": uploaded_label},
+            {"label": "Macro F1", "value": f"{parsed_f1:.4f}" if parsed_f1 else "N/A"},
+        ]
+        if before_f1 is not None:
+            package_details.append({"label": "Macro F1 before calibration", "value": f"{before_f1:.4f}"})
+        if weighted_f1 is not None:
+            package_details.append({"label": "Weighted F1", "value": f"{weighted_f1:.4f}"})
+        if accuracy is not None:
+            package_details.append({"label": "Accuracy", "value": f"{accuracy:.4f}"})
+        if isinstance(metrics, dict) and metrics.get("evaluation_split"):
+            package_details.append({"label": "Evaluation split", "value": str(metrics["evaluation_split"])})
+        if confusion_payload["matrix"]:
+            package_details.append({"label": "Confusion matrix", "value": f"{len(confusion_payload['matrix'])} x {len(confusion_payload['matrix'][0])}"})
+        if confusion_payload["labels"]:
+            package_details.append({"label": "Matrix labels", "value": str(len(confusion_payload["labels"]))})
+
+        return {
+            "f1": parsed_f1,
+            "confusion_matrix": confusion_payload if confusion_payload["matrix"] else [],
+            "package_details": package_details,
+        }
+
+    def _enrich_model_run_from_artifact(self, run: dict[str, Any]) -> dict[str, Any]:
+        artifact_path = run.get("artifact_path")
+        if not artifact_path:
+            return run
+        run_dir = Path(artifact_path)
+        if not run_dir.exists() or not run_dir.is_dir():
+            return run
+        metadata = self._model_artifact_metadata(
+            run_dir=run_dir,
+            backbone=run["backbone"],
+            uploaded_label=run["uploaded"],
+            exports=run["exports"],
+            fallback_f1=run["f1"],
+        )
+        enriched = dict(run)
+        if metadata["f1"]:
+            enriched["f1"] = metadata["f1"]
+        if metadata["confusion_matrix"]:
+            enriched["confusion_matrix"] = metadata["confusion_matrix"]
+        if metadata["package_details"]:
+            enriched["package_details"] = metadata["package_details"]
+        return enriched
+
+    def _model_run_confusion(self, run: dict[str, Any] | None) -> dict[str, Any]:
+        if run is None:
+            return {"labels": [], "matrix": []}
+        return self._matrix_payload(run.get("confusion_matrix"))
 
     def _validate_phobert_artifact(self, run_dir: Path) -> list[str]:
         files = sorted(path.name for path in run_dir.iterdir() if path.is_file())

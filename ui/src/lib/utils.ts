@@ -71,26 +71,31 @@ export function toneForLabel(label: string): Tone {
 
 const sidebarHrefMap: Record<string, string> = {
   dashboard: "/editor/dashboard",
-  review: "/editor/dashboard",
-  classifier: "/editor/dashboard",
-  admin: "/editor/admin",
+  review: "/editor/review",
+  classifier: "/editor/classifier",
+  admin: "/admin/ops",
   monitoring: "/scientist/monitoring",
   versions: "/scientist/versions",
   dataset: "/scientist/dataset",
 };
 
 const roleSidebarItems: Record<RoleType, Set<string>> = {
-  "editor-admin": new Set(["dashboard", "review", "classifier", "admin"]),
+  editor: new Set(["dashboard", "review", "classifier"]),
+  admin: new Set(["admin"]),
   "data-scientist": new Set(["monitoring", "versions", "dataset"]),
 };
 
 const rolePathPrefixes: Record<RoleType, string[]> = {
-  "editor-admin": ["/editor/dashboard", "/editor/review", "/editor/admin"],
+  editor: ["/editor/dashboard", "/editor/review", "/editor/classifier"],
+  admin: ["/admin/ops"],
   "data-scientist": ["/scientist/monitoring", "/scientist/versions", "/scientist/dataset"],
 };
 
 export function defaultPathForRole(role: RoleType): string {
-  return role === "editor-admin" ? "/editor/dashboard" : "/scientist/monitoring";
+  if (role === "admin") {
+    return "/admin/ops";
+  }
+  return role === "editor" ? "/editor/dashboard" : "/scientist/monitoring";
 }
 
 export function isPathAllowedForRole(pathname: string, role: RoleType): boolean {

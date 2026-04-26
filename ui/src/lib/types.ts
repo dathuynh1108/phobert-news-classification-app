@@ -1,5 +1,5 @@
 export type Tone = "navy" | "teal" | "coral" | "green" | "violet" | "gold" | "pink" | "muted";
-export type RoleType = "editor-admin" | "data-scientist";
+export type RoleType = "editor" | "admin" | "data-scientist";
 
 export interface Chip {
   label: string;
@@ -35,12 +35,45 @@ export interface ProgressDatum {
   tone: Tone;
 }
 
+export interface PageMeta {
+  page: number;
+  totalPages: number;
+  summary: string;
+}
+
+export interface ThresholdImpact {
+  total: number;
+  autoReady: number;
+  needsReview: number;
+  escalated: number;
+  autoRate: number;
+  reviewRate: number;
+  escalationRate: number;
+}
+
+export interface ConfusionMatrixData {
+  labels: string[];
+  matrix: number[][];
+}
+
+export interface PerClassMetric {
+  label: string;
+  precision: number;
+  recall: number;
+  f1: number;
+  support: number;
+  tp: number;
+  fp: number;
+  fn: number;
+}
+
 export interface ReviewQueueItem {
   id: string;
   label: string;
   title: string;
   confidence: number;
   margin: number;
+  status?: string;
 }
 
 export interface EditorDashboardScreen {
@@ -100,21 +133,37 @@ export interface ReviewArticleScreen {
   };
 }
 
+export interface ReviewListScreen {
+  screen: string;
+  chips: Chip[];
+  heading: string;
+  subheading: string;
+  sidebar: SidebarData;
+  stats: StatCardData[];
+  items: ReviewQueueItem[];
+  summary: string;
+  page: number;
+  totalPages: number;
+}
+
 export interface AdminOpsScreen {
   screen: string;
   chips: Chip[];
   heading: string;
   subheading: string;
   sidebar: SidebarData;
-  users: Array<{ name: string; role: string; queue: string; status: string }>;
+  users: Array<{ email: string; name: string; role: string; queue: string; status: string }>;
+  userPagination: PageMeta;
   routingRules: ProgressDatum[];
   auditLog: string[];
+  auditPagination: PageMeta;
   deploymentSnapshot: Array<{ label: string; value: string }>;
   candidateModelRun: { id: string; backbone: string; uploaded: string; f1: number; state: string } | null;
   thresholds: {
-    auto_approve: number;
-    review_floor: number;
+    autoApprove: number;
+    reviewFloor: number;
   };
+  thresholdImpact: ThresholdImpact;
 }
 
 export interface MonitoringScreen {
@@ -126,6 +175,8 @@ export interface MonitoringScreen {
   stats: StatCardData[];
   macroSeries: number[];
   labelScores: ProgressDatum[];
+  confusionMatrix: ConfusionMatrixData;
+  perClassMetrics: PerClassMetric[];
   articleAnalysis: Array<{ label: string; value: string; note: string }>;
   driftBreakdown: Array<{ label: string; detail: string; tone: Tone }>;
   lastRunAt: string | null;
@@ -141,6 +192,7 @@ export interface ModelVersionsScreen {
   selectedRun: { id: string; backbone: string; uploaded: string; f1: number; state: string } | null;
   comparisonCards: Array<{ label: string; value: string; detail: string }>;
   confusionMatrix: number[][];
+  confusionLabels: string[];
   packageDetails: Array<{ label: string; value: string }>;
   exports: string[];
 }
@@ -154,6 +206,7 @@ export interface DatasetLabScreen {
   stats: StatCardData[];
   imbalance: ProgressDatum[];
   hardSamples: Array<{ title: string; score: number }>;
+  hardSamplePagination: PageMeta;
   activeLearning: Array<{ title: string; value: string; body: string; pill: string; tone: Tone }>;
   priorityLabels: string[];
 }
@@ -161,7 +214,9 @@ export interface DatasetLabScreen {
 export interface LoginResponse {
   token: string;
   email: string;
+  name: string;
   role: RoleType;
+  displayRole: string;
   redirect: string;
   activeModel: string;
 }
@@ -169,15 +224,15 @@ export interface LoginResponse {
 export interface SessionState extends LoginResponse {}
 
 export interface InferenceResponse {
-  request_id: string;
-  model_version: string;
+  requestId: string;
+  modelVersion: string;
   label: string;
   confidence: number;
   margin: number;
   candidates: Array<{ label: string; score: number }>;
-  rationale_keywords: string[];
-  auto_decision: string;
-  latency_ms: number;
+  rationaleKeywords: string[];
+  autoDecision: string;
+  latencyMs: number;
 }
 
 export interface WorkerJobResponse {

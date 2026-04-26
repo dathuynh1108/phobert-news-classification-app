@@ -1,10 +1,42 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Eye, UploadCloud } from "lucide-react";
 
-import { fetchEditorDashboard, importArticle } from "../lib/api";
-import { EditorDashboardScreen } from "../lib/types";
+import { fetchEditorDashboard, fetchWorkerJob, importArticle } from "../lib/api";
+import { EditorDashboardScreen, WorkerJobResponse } from "../lib/types";
 import { cn, formatScore, toneClassMap, toneForLabel, translateLabel } from "../lib/utils";
 import { AppShell, ProgressList, StatCard, Surface, ToneBadge, ToneButton } from "../components/ui";
+
+const IMPORT_JOB_POLL_INTERVAL_MS = 1000;
+const IMPORT_JOB_MAX_POLLS = 45;
+
+type ImportJob = WorkerJobResponse & {
+  result?: unknown;
+  error?: string | null;
+};
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function getImportedArticleId(result: unknown): string | null {
+  if (!result || typeof result !== "object" || !("articleId" in result)) {
+    return null;
+  }
+  const articleId = (result as { articleId?: unknown }).articleId;
+  return typeof articleId === "string" ? articleId : null;
+}
+
+async function waitForImportJob(jobId: string): Promise<ImportJob> {
+  for (let attempt = 0; attempt < IMPORT_JOB_MAX_POLLS; attempt += 1) {
+    const job = await fetchWorkerJob(jobId);
+    if (job.status === "completed" || job.status === "failed") {
+      return job;
+    }
+    await delay(IMPORT_JOB_POLL_INTERVAL_MS);
+  }
+  throw new Error(`Import job ${jobId} is still running`);
+}
 
 export function EditorDashboardPage() {
   const [data, setData] = useState<EditorDashboardScreen | null>(null);
@@ -13,10 +45,11 @@ export function EditorDashboardPage() {
   const [articleContent, setArticleContent] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [jobStatus, setJobStatus] = useState("");
+  const [queuePage, setQueuePage] = useState(1);
 
   useEffect(() => {
-    fetchEditorDashboard().then(setData).catch(console.error);
-  }, []);
+    fetchEditorDashboard(queuePage).then(setData).catch(console.error);
+  }, [queuePage]);
 
   if (!data) {
     return <div className="loading-state">Loading editor dashboard...</div>;
@@ -29,18 +62,26 @@ export function EditorDashboardPage() {
     setIsImporting(true);
     try {
       const job = await importArticle({
-        source_url: articleUrl || undefined,
+        sourceUrl: articleUrl || undefined,
         title: articleTitle || undefined,
         content: articleContent || undefined,
         source: "VietnamNet",
-        run_inference: true,
+        runInference: true,
       });
-      setJobStatus(`Queued ${job.jobType} job ${job.jobId}`);
-      const refreshed = await fetchEditorDashboard();
+      setJobStatus(`Queued ${job.jobType} job ${job.jobId}; waiting for worker`);
+      const completedJob = await waitForImportJob(job.jobId);
+      if (completedJob.status === "failed") {
+        throw new Error(completedJob.error || `Import job ${completedJob.jobId} failed`);
+      }
+      const refreshed = await fetchEditorDashboard(queuePage);
       setData(refreshed);
+      const articleId = getImportedArticleId(completedJob.result);
+      setJobStatus(articleId ? `Imported article ${articleId}` : `Import job ${completedJob.jobId} completed`);
       setArticleUrl("");
       setArticleTitle("");
       setArticleContent("");
+    } catch (error) {
+      setJobStatus(error instanceof Error ? error.message : "Import failed");
     } finally {
       setIsImporting(false);
     }
@@ -56,7 +97,7 @@ export function EditorDashboardPage() {
             <h3>Import article</h3>
             <p>Fetch a story URL or paste article text, run inference, and add it to the editorial queue.</p>
           </div>
-          <ToneButton className="compact-button" disabled={isImporting} onClick={handleImport}>
+          <ToneButton className="compact-button" disabled={isImporting} icon={<UploadCloud aria-hidden="true" size={15} />} onClick={handleImport}>
             {isImporting ? "Queueing..." : "Queue import"}
           </ToneButton>
         </div>
@@ -110,6 +151,7 @@ export function EditorDashboardPage() {
                   )}
                   to={`/editor/review/${item.id}`}
                 >
+                  <Eye aria-hidden="true" size={15} />
                   Open story
                 </Link>
               </article>
@@ -117,9 +159,25 @@ export function EditorDashboardPage() {
           </div>
           <div className="panel-footer">
             <span>{data.reviewQueue.summary}</span>
-            <span>
-              {data.reviewQueue.page}/{data.reviewQueue.totalPages}
-            </span>
+            <div className="inline-actions">
+              <ToneButton
+                className="pagination-button"
+                disabled={queuePage <= 1}
+                icon={<ChevronLeft aria-hidden="true" size={15} />}
+                onClick={() => setQueuePage((value) => Math.max(1, value - 1))}
+                tone="muted"
+              >
+                Previous
+              </ToneButton>
+              <ToneButton
+                className="pagination-button"
+                disabled={queuePage >= data.reviewQueue.totalPages}
+                icon={<ChevronRight aria-hidden="true" size={15} />}
+                onClick={() => setQueuePage((value) => value + 1)}
+              >
+                Next
+              </ToneButton>
+            </div>
           </div>
         </Surface>
 

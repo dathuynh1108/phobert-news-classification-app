@@ -18,6 +18,11 @@ from app.data.seed import create_seed_state
 
 DEFAULT_BOOTSTRAP_PASSWORD = "vnn-password"
 OPEN_REVIEW_STATUSES = ("queued", "review", "escalated")
+DISPLAY_ROLE_BY_SCOPE = {
+    "admin": "Admin",
+    "editor": "Editor",
+    "data-scientist": "Data Scientist",
+}
 
 
 def _hash_password(password: str, salt: str) -> str:
@@ -34,15 +39,6 @@ def _json_value(value: Any, default: Any) -> Any:
     if isinstance(value, str):
         return json.loads(value)
     return deepcopy(value)
-
-
-def _camelize_timestamp(key: str) -> str:
-    return {
-        "created_at": "createdAt",
-        "started_at": "startedAt",
-        "finished_at": "finishedAt",
-        "updated_at": "updatedAt",
-    }[key]
 
 
 class ApplicationRepository:
@@ -67,6 +63,7 @@ class ApplicationRepository:
                 with self._connect() as connection:
                     with connection.cursor() as cursor:
                         self._create_tables(cursor)
+                        self._migrate_role_scopes(cursor)
                         self._remove_legacy_placeholder_records(cursor)
                         cursor.execute(f"SELECT COUNT(*) AS count FROM {self._table('app_users')}")
                         has_bootstrap = int(cursor.fetchone()["count"]) > 0
@@ -234,10 +231,24 @@ class ApplicationRepository:
                 drift_score DOUBLE PRECISION NOT NULL,
                 coverage DOUBLE PRECISION NOT NULL,
                 label_scores JSONB NOT NULL DEFAULT '[]'::jsonb,
+                confusion_matrix JSONB NOT NULL DEFAULT '{{"labels": [], "matrix": []}}'::jsonb,
+                per_class_metrics JSONB NOT NULL DEFAULT '[]'::jsonb,
                 article_analysis JSONB NOT NULL DEFAULT '[]'::jsonb,
                 drift_breakdown JSONB NOT NULL DEFAULT '[]'::jsonb,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
+            """
+        )
+        cursor.execute(
+            f"""
+            ALTER TABLE {self._table('monitoring_runs')}
+            ADD COLUMN IF NOT EXISTS confusion_matrix JSONB NOT NULL DEFAULT '{{"labels": [], "matrix": []}}'::jsonb
+            """
+        )
+        cursor.execute(
+            f"""
+            ALTER TABLE {self._table('monitoring_runs')}
+            ADD COLUMN IF NOT EXISTS per_class_metrics JSONB NOT NULL DEFAULT '[]'::jsonb
             """
         )
         cursor.execute(
@@ -272,6 +283,32 @@ class ApplicationRepository:
         if row is None:
             return None
         return _json_value(row["payload"], {})
+
+    def _migrate_role_scopes(self, cursor: psycopg.Cursor) -> None:
+        cursor.execute(
+            f"""
+            UPDATE {self._table('app_users')}
+            SET role_scope = CASE
+                    WHEN lower(display_role) = 'admin' OR lower(email) = 'admin@vnn-lab.edu.vn' THEN 'admin'
+                    ELSE 'editor'
+                END,
+                display_role = CASE
+                    WHEN lower(display_role) = 'admin' OR lower(email) = 'admin@vnn-lab.edu.vn' THEN 'Admin'
+                    ELSE 'Editor'
+                END,
+                updated_at = NOW()
+            WHERE role_scope = 'editor-admin'
+            """
+        )
+        cursor.execute(
+            f"""
+            UPDATE {self._table('auth_sessions')} AS session
+            SET role_scope = users.role_scope
+            FROM {self._table('app_users')} AS users
+            WHERE session.email = users.email
+              AND session.role_scope <> users.role_scope
+            """
+        )
 
     def _ensure_defaults(self, cursor: psycopg.Cursor) -> None:
         defaults = create_seed_state()
@@ -403,7 +440,7 @@ class ApplicationRepository:
             {
                 "email": "editor@vnn-lab.edu.vn",
                 "name": state["admin_ops"]["users"][0]["name"],
-                "role_scope": "editor-admin",
+                "role_scope": "editor",
                 "display_role": state["admin_ops"]["users"][0]["role"],
                 "queue": state["admin_ops"]["users"][0]["queue"],
                 "status": state["admin_ops"]["users"][0]["status"],
@@ -411,7 +448,7 @@ class ApplicationRepository:
             {
                 "email": "admin@vnn-lab.edu.vn",
                 "name": state["admin_ops"]["users"][1]["name"],
-                "role_scope": "editor-admin",
+                "role_scope": "admin",
                 "display_role": state["admin_ops"]["users"][1]["role"],
                 "queue": state["admin_ops"]["users"][1]["queue"],
                 "status": state["admin_ops"]["users"][1]["status"],
@@ -427,7 +464,7 @@ class ApplicationRepository:
             {
                 "email": "education-editor@vnn-lab.edu.vn",
                 "name": state["admin_ops"]["users"][3]["name"],
-                "role_scope": "editor-admin",
+                "role_scope": "editor",
                 "display_role": state["admin_ops"]["users"][3]["role"],
                 "queue": state["admin_ops"]["users"][3]["queue"],
                 "status": state["admin_ops"]["users"][3]["status"],
@@ -510,7 +547,7 @@ class ApplicationRepository:
                     "email": row["email"],
                     "name": row["name"],
                     "role": row["role_scope"],
-                    "displayRole": row["display_role"],
+                    "display_role": row["display_role"],
                     "queue": row["queue"],
                     "status": row["status"],
                 }
@@ -549,7 +586,7 @@ class ApplicationRepository:
             "email": row["email"],
             "role": row["role_scope"],
             "name": row["name"],
-            "displayRole": row["display_role"],
+            "display_role": row["display_role"],
             "queue": row["queue"],
         }
 
@@ -678,18 +715,15 @@ class ApplicationRepository:
 
     def _normalize_worker_job(self, row: dict[str, Any]) -> dict[str, Any]:
         payload = dict(row)
-        payload["jobId"] = payload.pop("job_id")
-        payload["jobType"] = payload.pop("job_type")
-        payload["createdBy"] = payload.pop("created_by")
         payload["payload"] = _json_value(payload["payload"], {})
         payload["result"] = _json_value(payload["result"], None)
         for key in ("created_at", "started_at", "finished_at", "updated_at"):
-            value = payload.pop(key)
-            payload[_camelize_timestamp(key)] = value.isoformat() if value else None
+            value = payload[key]
+            payload[key] = value.isoformat() if value else None
         return payload
 
     def create_user(self, email: str, name: str, role: str, queue: str, password: str) -> dict[str, Any]:
-        display_role = "Data Scientist" if role == "data-scientist" else "Editor"
+        display_role = DISPLAY_ROLE_BY_SCOPE.get(role, "Editor")
         salt = secrets.token_hex(16)
         with self._connect() as connection:
             with connection.cursor() as cursor:
@@ -717,6 +751,66 @@ class ApplicationRepository:
                 self._insert_audit(cursor, f"Invited user {email} as {display_role}")
             connection.commit()
         return dict(row)
+
+    def update_user(
+        self,
+        email: str,
+        name: str | None,
+        role: str | None,
+        queue: str | None,
+        status: str | None,
+        password: str | None,
+    ) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    SELECT email, name, role_scope, queue, status, password_salt, password_hash
+                    FROM {self._table('app_users')}
+                    WHERE lower(email) = lower(%s)
+                    """,
+                    (email,),
+                )
+                existing = cursor.fetchone()
+                if existing is None:
+                    return None
+                next_role = role or existing["role_scope"]
+                display_role = DISPLAY_ROLE_BY_SCOPE.get(next_role, "Editor")
+                if password:
+                    salt = secrets.token_hex(16)
+                    password_hash = _hash_password(password, salt)
+                else:
+                    salt = existing["password_salt"]
+                    password_hash = existing["password_hash"]
+                cursor.execute(
+                    f"""
+                    UPDATE {self._table('app_users')}
+                    SET name = %s,
+                        role_scope = %s,
+                        display_role = %s,
+                        queue = %s,
+                        status = %s,
+                        password_salt = %s,
+                        password_hash = %s,
+                        updated_at = NOW()
+                    WHERE email = %s
+                    RETURNING email, name, display_role AS role, queue, status
+                    """,
+                    (
+                        name or existing["name"],
+                        next_role,
+                        display_role,
+                        queue or existing["queue"],
+                        status or existing["status"],
+                        salt,
+                        password_hash,
+                        existing["email"],
+                    ),
+                )
+                row = cursor.fetchone()
+                self._insert_audit(cursor, f"Updated user {existing['email']}: {display_role}")
+            connection.commit()
+        return dict(row) if row else None
 
     def get_active_model(self) -> str:
         with self._connect() as connection:
@@ -747,6 +841,35 @@ class ApplicationRepository:
             connection.commit()
         return {"auto_approve": auto_approve, "review_floor": review_floor}
 
+    def preview_threshold_impact(self, auto_approve: float, review_floor: float) -> dict[str, Any]:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    SELECT
+                        COUNT(*) AS total,
+                        COUNT(*) FILTER (WHERE confidence >= %s) AS auto_ready,
+                        COUNT(*) FILTER (WHERE confidence >= %s AND confidence < %s) AS needs_review,
+                        COUNT(*) FILTER (WHERE confidence < %s) AS escalated
+                    FROM {self._table('articles')}
+                    """,
+                    (auto_approve, review_floor, auto_approve, review_floor),
+                )
+                row = cursor.fetchone()
+        total = int(row["total"])
+        auto_ready = int(row["auto_ready"])
+        needs_review = int(row["needs_review"])
+        escalated = int(row["escalated"])
+        return {
+            "total": total,
+            "auto_ready": auto_ready,
+            "needs_review": needs_review,
+            "escalated": escalated,
+            "auto_rate": auto_ready / total if total else 0,
+            "review_rate": needs_review / total if total else 0,
+            "escalation_rate": escalated / total if total else 0,
+        }
+
     def list_review_articles(self, page: int, page_size: int) -> tuple[list[dict[str, Any]], int]:
         offset = (page - 1) * page_size
         with self._connect() as connection:
@@ -769,6 +892,24 @@ class ApplicationRepository:
                     LIMIT %s OFFSET %s
                     """,
                     (list(OPEN_REVIEW_STATUSES), page_size, offset),
+                )
+                rows = cursor.fetchall()
+        return [dict(row) for row in rows], total
+
+    def list_label_review_articles(self, page: int, page_size: int) -> tuple[list[dict[str, Any]], int]:
+        offset = (page - 1) * page_size
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(f"SELECT COUNT(*) AS count FROM {self._table('articles')}")
+                total = int(cursor.fetchone()["count"])
+                cursor.execute(
+                    f"""
+                    SELECT id, label, title, confidence, margin, status
+                    FROM {self._table('articles')}
+                    ORDER BY updated_at DESC, created_at DESC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (page_size, offset),
                 )
                 rows = cursor.fetchall()
         return [dict(row) for row in rows], total
@@ -847,6 +988,40 @@ class ApplicationRepository:
         if article is None:
             raise RuntimeError(f"Failed to create article {article_id}")
         return article
+
+    def update_article_content(
+        self,
+        article_id: str,
+        title: str,
+        source_url: str,
+        paragraphs: list[str],
+        rationale_blocks: list[dict[str, Any]],
+        similar_articles: list[dict[str, Any]],
+    ) -> None:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    UPDATE {self._table('articles')}
+                    SET title = %s,
+                        source_url = %s,
+                        paragraphs = %s,
+                        rationale_blocks = %s,
+                        similar_articles = %s,
+                        updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (
+                        title,
+                        source_url,
+                        Jsonb(paragraphs),
+                        Jsonb(rationale_blocks),
+                        Jsonb(similar_articles),
+                        article_id,
+                    ),
+                )
+                self._insert_audit(cursor, f"Refreshed article {article_id} from URL")
+            connection.commit()
 
     def record_inference(self, article_id: str, result: dict[str, Any], status: str, history: str) -> None:
         with self._connect() as connection:
@@ -936,31 +1111,41 @@ class ApplicationRepository:
                 self._insert_audit(cursor, f"Editorial decision on {article_id}: {status_by_action.get(action, action)} - {label_note}")
             connection.commit()
 
-    def list_users(self) -> list[dict[str, Any]]:
+    def list_users(self, page: int = 1, page_size: int = 3) -> tuple[list[dict[str, Any]], int]:
+        offset = (page - 1) * page_size
         with self._connect() as connection:
             with connection.cursor() as cursor:
+                cursor.execute(f"SELECT COUNT(*) AS count FROM {self._table('app_users')}")
+                total = int(cursor.fetchone()["count"])
                 cursor.execute(
                     f"""
-                    SELECT name, display_role AS role, queue, status
+                    SELECT email, name, display_role AS role, queue, status
                     FROM {self._table('app_users')}
                     ORDER BY created_at ASC
-                    """
+                    LIMIT %s OFFSET %s
+                    """,
+                    (page_size, offset),
                 )
-                return [dict(row) for row in cursor.fetchall()]
+                rows = cursor.fetchall()
+        return [dict(row) for row in rows], total
 
-    def list_audit_log(self, limit: int = 8) -> list[str]:
+    def list_audit_log(self, page: int = 1, page_size: int = 3) -> tuple[list[str], int]:
+        offset = (page - 1) * page_size
         with self._connect() as connection:
             with connection.cursor() as cursor:
+                cursor.execute(f"SELECT COUNT(*) AS count FROM {self._table('audit_events')}")
+                total = int(cursor.fetchone()["count"])
                 cursor.execute(
                     f"""
                     SELECT message
                     FROM {self._table('audit_events')}
                     ORDER BY created_at DESC, id DESC
-                    LIMIT %s
+                    LIMIT %s OFFSET %s
                     """,
-                    (limit,),
+                    (page_size, offset),
                 )
-                return [row["message"] for row in cursor.fetchall()]
+                rows = cursor.fetchall()
+        return [row["message"] for row in rows], total
 
     def list_model_runs(self) -> list[dict[str, Any]]:
         with self._connect() as connection:
@@ -1011,34 +1196,41 @@ class ApplicationRepository:
         uploaded_label: str,
         f1: float,
         artifact_path: str | None,
+        confusion_matrix: Any,
+        package_details: list[dict[str, str]],
         exports: list[str],
     ) -> dict[str, Any]:
-        package_details = [
-            {"label": "Backbone", "value": backbone},
-            {"label": "Artifact path", "value": artifact_path or "not attached"},
-            {"label": "Files", "value": str(len(exports))},
-            {"label": "Import source", "value": uploaded_label},
-        ]
         with self._connect() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     f"""
                     INSERT INTO {self._table('model_runs')} (
-                        run_id, backbone, uploaded_label, f1, state, artifact_path, package_details, exports
+                        run_id, backbone, uploaded_label, f1, state, artifact_path,
+                        confusion_matrix, package_details, exports
                     )
-                    VALUES (%s, %s, %s, %s, 'inactive', %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, 'inactive', %s, %s, %s, %s)
                     ON CONFLICT (run_id)
                     DO UPDATE SET
                         backbone = EXCLUDED.backbone,
                         uploaded_label = EXCLUDED.uploaded_label,
                         f1 = EXCLUDED.f1,
                         artifact_path = EXCLUDED.artifact_path,
+                        confusion_matrix = EXCLUDED.confusion_matrix,
                         package_details = EXCLUDED.package_details,
                         exports = EXCLUDED.exports,
                         state = CASE WHEN {self._table('model_runs')}.state = 'active' THEN 'active' ELSE 'inactive' END,
                         updated_at = NOW()
                     """,
-                    (run_id, backbone, uploaded_label, f1, artifact_path, Jsonb(package_details), Jsonb(exports)),
+                    (
+                        run_id,
+                        backbone,
+                        uploaded_label,
+                        f1,
+                        artifact_path,
+                        Jsonb(confusion_matrix),
+                        Jsonb(package_details),
+                        Jsonb(exports),
+                    ),
                 )
                 self._insert_audit(cursor, f"Uploaded model run {run_id}")
             connection.commit()
@@ -1141,11 +1333,13 @@ class ApplicationRepository:
                     f"""
                     INSERT INTO {self._table('monitoring_runs')} (
                         macro_f1, error_share, drift_score, coverage,
-                        label_scores, article_analysis, drift_breakdown
+                        label_scores, confusion_matrix, per_class_metrics,
+                        article_analysis, drift_breakdown
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id, macro_f1, error_share, drift_score, coverage,
-                              label_scores, article_analysis, drift_breakdown, created_at
+                              label_scores, confusion_matrix, per_class_metrics,
+                              article_analysis, drift_breakdown, created_at
                     """,
                     (
                         snapshot["macro_f1"],
@@ -1153,6 +1347,8 @@ class ApplicationRepository:
                         snapshot["drift_score"],
                         snapshot["coverage"],
                         Jsonb(snapshot["label_scores"]),
+                        Jsonb(snapshot["confusion_matrix"]),
+                        Jsonb(snapshot["per_class_metrics"]),
                         Jsonb(snapshot["article_analysis"]),
                         Jsonb(snapshot["drift_breakdown"]),
                     ),
@@ -1168,7 +1364,8 @@ class ApplicationRepository:
                 cursor.execute(
                     f"""
                     SELECT id, macro_f1, error_share, drift_score, coverage,
-                           label_scores, article_analysis, drift_breakdown, created_at
+                           label_scores, confusion_matrix, per_class_metrics,
+                           article_analysis, drift_breakdown, created_at
                     FROM {self._table('monitoring_runs')}
                     ORDER BY created_at DESC, id DESC
                     LIMIT 1
@@ -1183,7 +1380,8 @@ class ApplicationRepository:
                 cursor.execute(
                     f"""
                     SELECT id, macro_f1, error_share, drift_score, coverage,
-                           label_scores, article_analysis, drift_breakdown, created_at
+                           label_scores, confusion_matrix, per_class_metrics,
+                           article_analysis, drift_breakdown, created_at
                     FROM {self._table('monitoring_runs')}
                     ORDER BY created_at DESC, id DESC
                     LIMIT %s
@@ -1200,6 +1398,8 @@ class ApplicationRepository:
         payload["drift_score"] = float(payload["drift_score"])
         payload["coverage"] = float(payload["coverage"])
         payload["label_scores"] = _json_value(payload["label_scores"], [])
+        payload["confusion_matrix"] = _json_value(payload["confusion_matrix"], {"labels": [], "matrix": []})
+        payload["per_class_metrics"] = _json_value(payload["per_class_metrics"], [])
         payload["article_analysis"] = _json_value(payload["article_analysis"], [])
         payload["drift_breakdown"] = _json_value(payload["drift_breakdown"], [])
         payload["created_at"] = payload["created_at"].isoformat()
@@ -1260,19 +1460,23 @@ class ApplicationRepository:
             summary[row["action"]] = int(row["count"])
         return summary
 
-    def list_low_confidence_articles(self, limit: int = 6) -> list[dict[str, Any]]:
+    def list_low_confidence_articles(self, page: int = 1, page_size: int = 6) -> tuple[list[dict[str, Any]], int]:
+        offset = (page - 1) * page_size
         with self._connect() as connection:
             with connection.cursor() as cursor:
+                cursor.execute(f"SELECT COUNT(*) AS count FROM {self._table('articles')}")
+                total = int(cursor.fetchone()["count"])
                 cursor.execute(
                     f"""
                     SELECT title, confidence AS score
                     FROM {self._table('articles')}
                     ORDER BY confidence ASC, margin ASC
-                    LIMIT %s
+                    LIMIT %s OFFSET %s
                     """,
-                    (limit,),
+                    (page_size, offset),
                 )
-                return [{"title": row["title"], "score": float(row["score"])} for row in cursor.fetchall()]
+                rows = cursor.fetchall()
+        return [{"title": row["title"], "score": float(row["score"])} for row in rows], total
 
     def list_dataset_samples(self, category: str, limit: int = 10) -> list[dict[str, Any]]:
         with self._connect() as connection:

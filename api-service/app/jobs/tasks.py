@@ -63,7 +63,7 @@ def import_article_job(job_id: str, payload: dict[str, Any]) -> None:
             label_hint=payload.get("label_hint"),
             run_inference=bool(payload.get("run_inference", True)),
         )
-        _mark_completed(job_id, {"articleId": result["articleId"], "status": result["status"]})
+        _mark_completed(job_id, {"article_id": result["article_id"], "status": result["status"]})
     except Exception as exc:
         logger.exception("Article import job failed: %s", job_id)
         _mark_failed(job_id, str(exc))
@@ -85,7 +85,7 @@ def recompute_monitoring_job(job_id: str, payload: dict[str, Any]) -> None:
         _mark_completed(
             job_id,
             {
-                "snapshotId": result.get("id"),
+                "snapshot_id": result.get("id"),
                 "status": result.get("status", "ok"),
                 "reason": result.get("reason"),
                 "trigger": payload.get("trigger", "manual"),

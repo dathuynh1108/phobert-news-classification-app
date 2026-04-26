@@ -22,7 +22,7 @@ This monorepo is split into service-oriented modules:
 
 ```mermaid
 flowchart LR
-    user[Editor / Admin / Data Scientist] --> ui[React + Vite UI]
+    user[Editor, Admin, and Data Scientist roles] --> ui[React + Vite UI]
     ui -->|REST API + Bearer token| api[FastAPI api-service]
 
     api -->|sessions, articles, decisions, metrics| db[(Postgres)]
@@ -229,3 +229,5 @@ python train/scripts/package_run.py \
 - `api-service` creates relational tables and loads bootstrap records when the database is empty.
 - If no real artifact exists in `train/artifacts/active/`, `model-service` exits instead of serving synthetic predictions.
 - If the proto changes, commit both generated files in `model-service/app/generated/` and `api-service/app/generated/`.
+
+https://www.kaggle.com/code/thnhthunh/notebook4cfe980b2e

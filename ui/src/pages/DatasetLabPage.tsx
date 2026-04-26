@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { fetchDatasetLab } from "../lib/api";
 import { DatasetLabScreen } from "../lib/types";
 import { translateLabel } from "../lib/utils";
-import { AppShell, ProgressList, StatCard, Surface, ToneBadge } from "../components/ui";
+import { AppShell, ProgressList, StatCard, Surface, ToneBadge, ToneButton } from "../components/ui";
 
 export function DatasetLabPage() {
   const [data, setData] = useState<DatasetLabScreen | null>(null);
+  const [samplePage, setSamplePage] = useState(1);
 
   useEffect(() => {
-    fetchDatasetLab().then(setData).catch(console.error);
-  }, []);
+    fetchDatasetLab(samplePage).then(setData).catch(console.error);
+  }, [samplePage]);
 
   if (!data) {
     return <div className="loading-state">Loading dataset workspace...</div>;
@@ -39,13 +41,13 @@ export function DatasetLabPage() {
           <div className="section-heading">
             <div>
               <h3>Hard samples</h3>
-              <p>The lowest-confidence stories are waiting for relabeling or desk policy review.</p>
+              <p>{data.hardSamplePagination.summary}</p>
             </div>
           </div>
           <div className="sample-list">
             {data.hardSamples.length ? (
-              data.hardSamples.map((sample) => (
-                <div className="sample-row reveal" key={sample.title}>
+              data.hardSamples.map((sample, index) => (
+                <div className="sample-row reveal" key={`${sample.title}-${sample.score}-${index}`}>
                   <span>{sample.title}</span>
                   <ToneBadge tone="coral">{sample.score.toFixed(2)}</ToneBadge>
                 </div>
@@ -53,6 +55,30 @@ export function DatasetLabPage() {
             ) : (
               <p className="empty-state">No low-confidence articles are available yet.</p>
             )}
+          </div>
+          <div className="pagination-bar embedded-pagination">
+            <span>
+              Page {data.hardSamplePagination.page} of {data.hardSamplePagination.totalPages}
+            </span>
+            <div className="inline-actions">
+              <ToneButton
+                className="pagination-button"
+                disabled={samplePage <= 1}
+                icon={<ChevronLeft aria-hidden="true" size={15} />}
+                onClick={() => setSamplePage((value) => Math.max(1, value - 1))}
+                tone="muted"
+              >
+                Previous
+              </ToneButton>
+              <ToneButton
+                className="pagination-button"
+                disabled={samplePage >= data.hardSamplePagination.totalPages}
+                icon={<ChevronRight aria-hidden="true" size={15} />}
+                onClick={() => setSamplePage((value) => value + 1)}
+              >
+                Next
+              </ToneButton>
+            </div>
           </div>
         </Surface>
       </div>

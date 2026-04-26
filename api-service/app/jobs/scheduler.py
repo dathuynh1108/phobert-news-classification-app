@@ -10,7 +10,7 @@ import time
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from redis import Redis
-from redis.exceptions import RedisError
+from redis.exceptions import LockNotOwnedError, RedisError
 
 from app.core.config import get_settings
 from app.core.database import ApplicationRepository
@@ -33,8 +33,8 @@ def _enqueue_scheduled_monitoring() -> None:
         payload=payload,
         created_by="scheduler",
     )
-    recompute_monitoring_job.send(job["jobId"], payload)
-    logger.info("Queued scheduled monitoring job %s", job["jobId"])
+    recompute_monitoring_job.send(job["job_id"], payload)
+    logger.info("Queued scheduled monitoring job %s", job["job_id"])
 
 
 def _scheduler_loop() -> None:
@@ -49,12 +49,22 @@ def _scheduler_loop() -> None:
             logger.info("Scheduler lock is held by another worker")
             return
 
+        def stop_scheduler() -> None:
+            if not heartbeat_stop.is_set():
+                shutdown_queue.put(True)
+
         def heartbeat() -> None:
             while not heartbeat_stop.wait(30):
                 try:
                     lock.extend(90, replace_ttl=True)
+                except LockNotOwnedError:
+                    logger.warning("Scheduler lock is no longer owned; stopping this scheduler instance")
+                    stop_scheduler()
+                    break
                 except RedisError:
-                    logger.exception("Failed to extend scheduler lock")
+                    logger.exception("Failed to extend scheduler lock; stopping this scheduler instance")
+                    stop_scheduler()
+                    break
 
         threading.Thread(target=heartbeat, daemon=True).start()
 

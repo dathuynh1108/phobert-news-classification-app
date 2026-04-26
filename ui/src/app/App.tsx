@@ -1,16 +1,17 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
-import { logout } from "../lib/api";
-import { clearSession, getSession } from "../lib/session";
+import { getSession } from "../lib/session";
 import { RoleType } from "../lib/types";
 import { defaultPathForRole, isPathAllowedForRole } from "../lib/utils";
 import { AdminOpsPage } from "../pages/AdminOpsPage";
 import { ArticleReviewPage } from "../pages/ArticleReviewPage";
 import { DatasetLabPage } from "../pages/DatasetLabPage";
 import { EditorDashboardPage } from "../pages/EditorDashboardPage";
+import { LabelReviewPage } from "../pages/LabelReviewPage";
 import { LoginPage } from "../pages/LoginPage";
 import { ModelVersionsPage } from "../pages/ModelVersionsPage";
 import { MonitoringPage } from "../pages/MonitoringPage";
+import { ReviewQueuePage } from "../pages/ReviewQueuePage";
 
 function RequireSession() {
   const session = getSession();
@@ -18,20 +19,7 @@ function RequireSession() {
   if (!session) {
     return <Navigate replace state={{ from: location.pathname }} to="/" />;
   }
-  return (
-    <div>
-      <header className="floating-logout">
-        <button onClick={() => {
-          logout().catch(console.error);
-          clearSession();
-          window.location.assign("/");
-        }} type="button">
-          Sign out
-        </button>
-      </header>
-      <Outlet />
-    </div>
-  );
+  return <Outlet />;
 }
 
 function RequireRole({ role }: { role: RoleType }) {
@@ -52,11 +40,16 @@ export default function App() {
       <Routes>
         <Route element={<LoginPage />} path="/" />
         <Route element={<RequireSession />}>
-          <Route element={<RequireRole role="editor-admin" />}>
+          <Route element={<RequireRole role="editor" />}>
             <Route element={<EditorDashboardPage />} path="/editor/dashboard" />
+            <Route element={<ReviewQueuePage />} path="/editor/review" />
             <Route element={<ArticleReviewPage />} path="/editor/review/:articleId" />
-            <Route element={<AdminOpsPage />} path="/editor/admin" />
+            <Route element={<LabelReviewPage />} path="/editor/classifier" />
           </Route>
+          <Route element={<RequireRole role="admin" />}>
+            <Route element={<AdminOpsPage />} path="/admin/ops" />
+          </Route>
+          <Route element={<Navigate replace to="/admin/ops" />} path="/editor/admin" />
           <Route element={<RequireRole role="data-scientist" />}>
             <Route element={<MonitoringPage />} path="/scientist/monitoring" />
             <Route element={<ModelVersionsPage />} path="/scientist/versions" />

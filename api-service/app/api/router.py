@@ -9,7 +9,18 @@ from app.clients.classifier_client import ClassifierServiceError, GrpcClassifier
 from app.core.config import Settings, get_settings
 from app.core.database import ApplicationRepository
 from app.jobs.tasks import import_article_job, recompute_monitoring_job
-from app.schemas.models import ArticleIngestRequest, DecisionRequest, InferenceRequest, LoginRequest, ThresholdUpdateRequest, UserInviteRequest
+from app.schemas.models import (
+    ArticleIngestRequest,
+    ArticleUrlInferenceRequest,
+    DecisionRequest,
+    InferenceRequest,
+    LoginRequest,
+    ThresholdUpdateRequest,
+    UserInviteRequest,
+    UserUpdateRequest,
+    WorkerJobListResponse,
+    WorkerJobQueuedResponse,
+)
 from app.services.application_service import (
     ApplicationService,
     AuthenticationError,
@@ -51,8 +62,14 @@ def require_session(
 
 
 def require_editor(session: dict[str, Any] = Depends(require_session)) -> dict[str, Any]:
-    if session["role"] != "editor-admin":
-        raise HTTPException(status_code=403, detail="Editor/Admin role required")
+    if session["role"] != "editor":
+        raise HTTPException(status_code=403, detail="Editor role required")
+    return session
+
+
+def require_admin(session: dict[str, Any] = Depends(require_session)) -> dict[str, Any]:
+    if session["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
     return session
 
 
@@ -67,11 +84,11 @@ router = APIRouter()
 
 def _send_worker_message(actor: Any, service: ApplicationService, job: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     try:
-        actor.send(job["jobId"], payload)
+        actor.send(job["job_id"], payload)
     except Exception as exc:
-        service.fail_worker_job(job["jobId"], f"Failed to enqueue job: {exc}")
+        service.fail_worker_job(job["job_id"], f"Failed to enqueue job: {exc}")
         raise HTTPException(status_code=503, detail=f"Failed to enqueue worker job: {exc}") from exc
-    return {"status": job["status"], "jobId": job["jobId"], "jobType": job["jobType"]}
+    return WorkerJobQueuedResponse(status=job["status"], job_id=job["job_id"], job_type=job["job_type"]).to_dict()
 
 
 @router.get("/health")
@@ -142,6 +159,26 @@ def enqueue_article_import(
     return _send_worker_message(import_article_job, service, job, job_payload)
 
 
+@router.get("/editor/review")
+def get_review_queue(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=8, ge=1, le=20),
+    service: ApplicationService = Depends(get_service),
+    _session: dict[str, Any] = Depends(require_editor),
+) -> dict[str, Any]:
+    return service.get_review_queue(page=page, page_size=page_size)
+
+
+@router.get("/editor/classifier")
+def get_label_review(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=25),
+    service: ApplicationService = Depends(get_service),
+    _session: dict[str, Any] = Depends(require_editor),
+) -> dict[str, Any]:
+    return service.get_label_review(page=page, page_size=page_size)
+
+
 @router.get("/editor/articles/{article_id}")
 def get_review_article(
     article_id: str,
@@ -175,6 +212,23 @@ def infer_article(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.post("/editor/articles/{article_id}/infer-url")
+def infer_article_from_url(
+    article_id: str,
+    payload: ArticleUrlInferenceRequest,
+    service: ApplicationService = Depends(get_service),
+    _session: dict[str, Any] = Depends(require_editor),
+) -> dict[str, Any]:
+    try:
+        return service.refresh_article_from_url(article_id=article_id, source_url=payload.source_url, top_k=payload.top_k)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ClassifierServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.post("/editor/articles/{article_id}/decision")
 def submit_decision(
     article_id: str,
@@ -197,17 +251,26 @@ def submit_decision(
 
 @router.get("/admin/ops")
 def get_admin_ops(
+    user_page: int = Query(default=1, ge=1),
+    user_page_size: int = Query(default=3, ge=1, le=20),
+    audit_page: int = Query(default=1, ge=1),
+    audit_page_size: int = Query(default=3, ge=1, le=20),
     service: ApplicationService = Depends(get_service),
-    _session: dict[str, Any] = Depends(require_editor),
+    _session: dict[str, Any] = Depends(require_admin),
 ) -> dict[str, Any]:
-    return service.get_admin_ops()
+    return service.get_admin_ops(
+        user_page=user_page,
+        user_page_size=user_page_size,
+        audit_page=audit_page,
+        audit_page_size=audit_page_size,
+    )
 
 
 @router.post("/admin/users")
 def invite_user(
     payload: UserInviteRequest,
     service: ApplicationService = Depends(get_service),
-    _session: dict[str, Any] = Depends(require_editor),
+    _session: dict[str, Any] = Depends(require_admin),
 ) -> dict[str, Any]:
     return service.invite_user(
         email=payload.email,
@@ -218,14 +281,46 @@ def invite_user(
     )
 
 
+@router.patch("/admin/users/{email}")
+def update_user(
+    email: str,
+    payload: UserUpdateRequest,
+    service: ApplicationService = Depends(get_service),
+    _session: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    try:
+        return service.update_user(
+            email=email,
+            name=payload.name,
+            role=payload.role,
+            queue=payload.queue,
+            status=payload.status,
+            password=payload.password,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.post("/admin/ops/thresholds")
 def update_thresholds(
     payload: ThresholdUpdateRequest,
     service: ApplicationService = Depends(get_service),
-    _session: dict[str, Any] = Depends(require_editor),
+    _session: dict[str, Any] = Depends(require_admin),
 ) -> dict[str, Any]:
     try:
         return service.update_thresholds(auto_approve=payload.auto_approve, review_floor=payload.review_floor)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/admin/ops/thresholds/preview")
+def preview_threshold_impact(
+    payload: ThresholdUpdateRequest,
+    service: ApplicationService = Depends(get_service),
+    _session: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    try:
+        return service.preview_threshold_impact(auto_approve=payload.auto_approve, review_floor=payload.review_floor)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -234,7 +329,7 @@ def update_thresholds(
 def promote_model_from_admin(
     run_id: str,
     service: ApplicationService = Depends(get_service),
-    _session: dict[str, Any] = Depends(require_editor),
+    _session: dict[str, Any] = Depends(require_admin),
 ) -> dict[str, Any]:
     try:
         return service.activate_model(run_id=run_id)
@@ -278,7 +373,7 @@ def list_worker_jobs(
     service: ApplicationService = Depends(get_service),
     _session: dict[str, Any] = Depends(require_session),
 ) -> dict[str, Any]:
-    return {"jobs": service.list_worker_jobs(limit=limit)}
+    return WorkerJobListResponse(jobs=service.list_worker_jobs(limit=limit)).to_dict()
 
 
 @router.get("/jobs/{job_id}")
@@ -295,11 +390,12 @@ def get_worker_job(
 
 @router.get("/scientist/model-versions")
 def get_model_versions(
+    selected_run_id: str | None = Query(default=None),
     service: ApplicationService = Depends(get_service),
     _session: dict[str, Any] = Depends(require_scientist),
 ) -> dict[str, Any]:
     try:
-        return service.get_model_versions()
+        return service.get_model_versions(selected_run_id=selected_run_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -309,7 +405,6 @@ async def upload_model_version(
     run_id: Annotated[str, Form()],
     files: Annotated[list[UploadFile], File()],
     backbone: Annotated[str, Form()] = "vinai/phobert-base-v2",
-    f1: Annotated[float, Form()] = 0.0,
     uploaded_label: Annotated[str, Form()] = "manual upload",
     service: ApplicationService = Depends(get_service),
     _session: dict[str, Any] = Depends(require_scientist),
@@ -319,7 +414,6 @@ async def upload_model_version(
         return service.upload_model_run(
             run_id=run_id,
             backbone=backbone,
-            f1=f1,
             uploaded_label=uploaded_label,
             files=payload_files,
         )
@@ -355,7 +449,9 @@ def download_model_export(
 
 @router.get("/scientist/dataset-lab")
 def get_dataset_lab(
+    sample_page: int = Query(default=1, ge=1),
+    sample_page_size: int = Query(default=4, ge=1, le=20),
     service: ApplicationService = Depends(get_service),
     _session: dict[str, Any] = Depends(require_scientist),
 ) -> dict[str, Any]:
-    return service.get_dataset_lab()
+    return service.get_dataset_lab(sample_page=sample_page, sample_page_size=sample_page_size)

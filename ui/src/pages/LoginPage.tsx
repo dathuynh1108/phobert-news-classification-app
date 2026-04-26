@@ -7,9 +7,14 @@ import { cn } from "../lib/utils";
 
 const roles = [
   {
-    id: "editor-admin" as const,
-    title: "Editor / Admin",
+    id: "editor" as const,
+    title: "Editor",
     description: "Approve auto-labels and manage the review queue",
+  },
+  {
+    id: "admin" as const,
+    title: "Admin",
+    description: "Manage users, routing rules, and model promotion",
   },
   {
     id: "data-scientist" as const,
@@ -22,7 +27,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("editor@vnn-lab.edu.vn");
   const [password, setPassword] = useState("vnn-password");
-  const [role, setRole] = useState<(typeof roles)[number]["id"]>("editor-admin");
+  const [role, setRole] = useState<(typeof roles)[number]["id"]>("editor");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
