@@ -1,0 +1,111 @@
+{
+  "generatedAt": "2026-05-16T21:32:27.433Z",
+  "openReviewQueue": {
+    "summary": "Showing 3 of 3 open stories",
+    "items": [
+      {
+        "articleId": "art-1778966625-4cde88",
+        "title": "BHYT cho trẻ em dưới 6 tuổi: Miễn phí, quyền lợi, cách làm",
+        "predictedLabel": "Bạn đọc",
+        "confidence": 0.7301,
+        "margin": 0.4778,
+        "status": "review"
+      },
+      {
+        "articleId": "art-1778966624-5d2f83",
+        "title": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi",
+        "predictedLabel": "Đời sống",
+        "confidence": 0.4945,
+        "margin": 0.1147,
+        "status": "escalated"
+      },
+      {
+        "articleId": "art-1778966622-4a8791",
+        "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+        "predictedLabel": "Thị trường tiêu dùng",
+        "confidence": 0.503,
+        "margin": 0.1016,
+        "status": "escalated"
+      }
+    ]
+  },
+  "monitoringArticleAnalysis": [
+    {
+      "note": "Articles still waiting for a human or policy decision",
+      "label": "Open review queue",
+      "value": "3"
+    },
+    {
+      "note": "Latest predictions joined with editor decisions",
+      "label": "Reviewed predictions",
+      "value": "5"
+    },
+    {
+      "note": "Inference results persisted from the model service",
+      "label": "Stored predictions",
+      "value": "15"
+    }
+  ],
+  "sourceScreenshots": [
+    {
+      "articleId": "art-1778966625-4cde88",
+      "title": "BHYT cho trẻ em dưới 6 tuổi: Miễn phí, quyền lợi, cách làm",
+      "url": "https://vietnamnet.vn/chi-tiet-ve-bhyt-cho-tre-em-duoi-6-tuoi-mien-phi-quyen-loi-cach-lam-2495905.html",
+      "screenshot": "test-report-assets-full/01-source-vietnamnet-article.png",
+      "captureStatus": "ok"
+    },
+    {
+      "articleId": "art-1778964425-f2f6bd",
+      "title": "Giá vàng thế giới",
+      "url": "https://vietnamnet.vn/gia-vang-the-gioi-lao-doc-xuong-vung-4-550-usd-ounce-2499122.html",
+      "screenshot": "test-report-assets-full/27-source-vietnamnet-gia-vang.png",
+      "captureStatus": "ok"
+    },
+    {
+      "articleId": "art-1778964426-345197",
+      "title": "Man City đấu Arsenal, League Cup: Tất cả chống lại Pep Guardiola",
+      "url": "https://vietnamnet.vn/man-city-dau-arsenal-league-cup-tat-ca-chong-lai-pep-guardiola-2499156.html",
+      "screenshot": "test-report-assets-full/28-source-vietnamnet-man-city.png",
+      "captureStatus": "ok"
+    },
+    {
+      "articleId": "art-1778964427-a06803",
+      "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+      "url": "https://vietnamnet.vn/dau-da-day-vi-su-dung-thuc-uong-nay-giam-can-giai-doc-2498754.html",
+      "screenshot": "test-report-assets-full/29-source-vietnamnet-giam-can.png",
+      "captureStatus": "ok"
+    },
+    {
+      "articleId": "art-1778964428-c666ad",
+      "title": "Ám ảnh AI đẩy hàng triệu nhân viên công sở Trung Quốc vào cuộc chiến sinh tồn",
+      "url": "https://vietnamnet.vn/am-anh-ai-can-quet-cong-so-trung-quoc-day-trieu-nguoi-vao-cuoc-chien-sinh-ton-2499124.html",
+      "screenshot": "test-report-assets-full/30-source-vietnamnet-ai-cong-so.png",
+      "captureStatus": "ok"
+    },
+    {
+      "articleId": "art-1778964429-9c76a8",
+      "title": "Đập kính ô tô trộm tài sản, kẻ có 6 tiền án sa lưới",
+      "url": "https://vietnamnet.vn/chuyen-dap-kinh-o-to-trom-tai-san-ke-co-6-tien-an-sa-luoi-2499112.html",
+      "screenshot": "test-report-assets-full/31-source-vietnamnet-phap-luat.png",
+      "captureStatus": "ok"
+    },
+    {
+      "articleId": "art-1778966624-5d2f83",
+      "title": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi",
+      "url": "https://vietnamnet.vn/hang-chuc-vien-nam-cham-ket-thanh-chuoi-gay-thung-ruot-be-trai-5-tuoi-2499074.html",
+      "screenshot": "test-report-assets-full/32-source-vietnamnet-nam-cham.png",
+      "captureStatus": "ok"
+    }
+  ],
+  "screenshots": [
+    "output/test-report-assets-full/25-editor-open-review-queue-records.png",
+    "output/test-report-assets-full/26-editor-open-review-detail-real-inference.png",
+    "output/test-report-assets-full/01-source-vietnamnet-article.png",
+    "output/test-report-assets-full/27-source-vietnamnet-gia-vang.png",
+    "output/test-report-assets-full/28-source-vietnamnet-man-city.png",
+    "output/test-report-assets-full/29-source-vietnamnet-giam-can.png",
+    "output/test-report-assets-full/30-source-vietnamnet-ai-cong-so.png",
+    "output/test-report-assets-full/31-source-vietnamnet-phap-luat.png",
+    "output/test-report-assets-full/32-source-vietnamnet-nam-cham.png"
+  ]
+}

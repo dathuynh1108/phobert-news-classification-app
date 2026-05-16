@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-05-16T20:48:16.456Z",
+  "latestImported": [
+    {
+      "articleId": "art-1778964429-9c76a8",
+      "title": "Đập kính ô tô trộm tài sản, kẻ có 6 tiền án sa lưới",
+      "predictedLabel": "Pháp luật",
+      "confidence": 0.9946,
+      "margin": 0.99,
+      "status": "auto_approved"
+    },
+    {
+      "articleId": "art-1778964428-c666ad",
+      "title": "Ám ảnh AI đẩy hàng triệu nhân viên công sở Trung Quốc vào cuộc chiến sinh tồn",
+      "predictedLabel": "Công nghệ",
+      "confidence": 0.9845,
+      "margin": 0.9782,
+      "status": "auto_approved"
+    },
+    {
+      "articleId": "art-1778964427-a06803",
+      "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+      "predictedLabel": "Thị trường tiêu dùng",
+      "confidence": 0.503,
+      "margin": 0.1016,
+      "status": "escalated"
+    },
+    {
+      "articleId": "art-1778964426-345197",
+      "title": "Man City đấu Arsenal, League Cup: Tất cả chống lại Pep Guardiola",
+      "predictedLabel": "Thể thao",
+      "confidence": 0.9984,
+      "margin": 0.9976,
+      "status": "auto_approved"
+    },
+    {
+      "articleId": "art-1778964425-f2f6bd",
+      "title": "Giá vàng thế giới",
+      "predictedLabel": "Kinh doanh",
+      "confidence": 0.9739,
+      "margin": 0.956,
+      "status": "auto_approved"
+    }
+  ],
+  "screenshots": [
+    "output/test-report-assets-full/21-editor-label-review-multi-label.png",
+    "output/test-report-assets-full/22-editor-article-detail-multi-label-low-confidence.png"
+  ]
+}

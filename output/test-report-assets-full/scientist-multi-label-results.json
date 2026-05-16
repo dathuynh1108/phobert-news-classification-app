@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-05-16T20:52:31.485Z",
+  "monitoring": {
+    "snapshotId": 4,
+    "macroF1": 0.6667,
+    "errorShare": 0.2,
+    "labels": [
+      "Công nghệ",
+      "Kinh doanh",
+      "Pháp luật",
+      "Sức khỏe",
+      "Thể thao",
+      "Thị trường tiêu dùng"
+    ],
+    "reviewedPredictions": 5
+  },
+  "decisions": [
+    {
+      "articleId": "art-1778964425-f2f6bd",
+      "action": "approve",
+      "selectedLabel": "Kinh doanh"
+    },
+    {
+      "articleId": "art-1778964426-345197",
+      "action": "approve",
+      "selectedLabel": "Thể thao"
+    },
+    {
+      "articleId": "art-1778964427-a06803",
+      "action": "override",
+      "selectedLabel": "Sức khỏe",
+      "predictedLabel": "Thị trường tiêu dùng"
+    },
+    {
+      "articleId": "art-1778964428-c666ad",
+      "action": "approve",
+      "selectedLabel": "Công nghệ"
+    },
+    {
+      "articleId": "art-1778964429-9c76a8",
+      "action": "approve",
+      "selectedLabel": "Pháp luật"
+    }
+  ],
+  "screenshots": [
+    "output/test-report-assets-full/23-scientist-monitoring-multi-label.png",
+    "output/test-report-assets-full/24-scientist-dataset-lab-multi-label.png"
+  ]
+}

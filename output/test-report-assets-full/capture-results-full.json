@@ -1,105 +1,470 @@
 {
-  "generatedAt": "2026-05-15T16:33:58.294Z",
+  "generatedAt": "2026-05-16T21:32:27.434Z",
   "facts": {
-    "articleUrl": "https://vietnamnet.vn/xu-huong-mo-nganh-tri-tue-nhan-tao-o-nhieu-truong-dai-hoc-nam-2026-2490362.html",
-    "healthText": "{\"status\":\"ok\",\"database\":{\"ok\":true},\"model_service\":{\"ok\":true,\"model_version\":\"active\",\"latency_ms\":448}}",
-    "sourceTitle": "Làn sóng mở ngành Trí tuệ nhân tạo ở nhiều trường đại học năm 2026",
-    "importJobStatus": "Imported article art-1778862824-d6e1a1",
-    "articleId": "art-1778862824-d6e1a1",
-    "predictionLabel": "Education",
-    "predictionConfidence": "Confidence 1.00",
-    "inferenceHistory": "Inference auto-approved · 186ms",
-    "candidateRanking": [
-      "Education (top-1)",
-      "Readers (top-2)",
-      "Consumer Protection (top-3)"
+    "recapturedAt": "2026-05-16T21:32:27.434Z",
+    "health": {
+      "status": "ok",
+      "database": {
+        "ok": true
+      },
+      "model_service": {
+        "ok": true,
+        "model_version": "active",
+        "latency_ms": 294
+      }
+    },
+    "activeModel": "PhoBERT package run_1777197420559",
+    "sourceArticles": [
+      {
+        "id": "art-1778966625-4cde88",
+        "file": "01-source-vietnamnet-article.png",
+        "title": "BHYT cho trẻ em dưới 6 tuổi: Miễn phí, quyền lợi, cách làm",
+        "label": "Bạn đọc",
+        "confidence": 0.7301,
+        "status": "review",
+        "url": "https://vietnamnet.vn/chi-tiet-ve-bhyt-cho-tre-em-duoi-6-tuoi-mien-phi-quyen-loi-cach-lam-2495905.html",
+        "screenshot": "test-report-assets-full/01-source-vietnamnet-article.png",
+        "captureStatus": "ok",
+        "pageTitle": "Chi tiết về BHYT cho trẻ em dưới 6 tuổi: Miễn phí, Quyền lợi, Cách làm"
+      },
+      {
+        "id": "art-1778964425-f2f6bd",
+        "file": "27-source-vietnamnet-gia-vang.png",
+        "title": "Giá vàng thế giới",
+        "label": "Kinh doanh",
+        "confidence": 0.9739,
+        "status": "approved",
+        "url": "https://vietnamnet.vn/gia-vang-the-gioi-lao-doc-xuong-vung-4-550-usd-ounce-2499122.html",
+        "screenshot": "test-report-assets-full/27-source-vietnamnet-gia-vang.png",
+        "captureStatus": "ok",
+        "pageTitle": "Giá vàng thế giới 'sập mạnh' về 4.490 USD/ounce, thị trường hoảng loạn"
+      },
+      {
+        "id": "art-1778964426-345197",
+        "file": "28-source-vietnamnet-man-city.png",
+        "title": "Man City đấu Arsenal, League Cup: Tất cả chống lại Pep Guardiola",
+        "label": "Thể thao",
+        "confidence": 0.9984,
+        "status": "approved",
+        "url": "https://vietnamnet.vn/man-city-dau-arsenal-league-cup-tat-ca-chong-lai-pep-guardiola-2499156.html",
+        "screenshot": "test-report-assets-full/28-source-vietnamnet-man-city.png",
+        "captureStatus": "ok",
+        "pageTitle": "Man City đấu Arsenal, League Cup: Tất cả chống lại Pep Guardiola"
+      },
+      {
+        "id": "art-1778964427-a06803",
+        "file": "29-source-vietnamnet-giam-can.png",
+        "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+        "label": "Sức khỏe / Thị trường tiêu dùng",
+        "confidence": 0.503,
+        "status": "overridden/escalated",
+        "url": "https://vietnamnet.vn/dau-da-day-vi-su-dung-thuc-uong-nay-giam-can-giai-doc-2498754.html",
+        "screenshot": "test-report-assets-full/29-source-vietnamnet-giam-can.png",
+        "captureStatus": "ok",
+        "pageTitle": "Đau dạ dày vì sử dụng thức uống này giảm cân, giải độc "
+      },
+      {
+        "id": "art-1778964428-c666ad",
+        "file": "30-source-vietnamnet-ai-cong-so.png",
+        "title": "Ám ảnh AI đẩy hàng triệu nhân viên công sở Trung Quốc vào cuộc chiến sinh tồn",
+        "label": "Công nghệ",
+        "confidence": 0.9845,
+        "status": "approved",
+        "url": "https://vietnamnet.vn/am-anh-ai-can-quet-cong-so-trung-quoc-day-trieu-nguoi-vao-cuoc-chien-sinh-ton-2499124.html",
+        "screenshot": "test-report-assets-full/30-source-vietnamnet-ai-cong-so.png",
+        "captureStatus": "ok",
+        "pageTitle": "Ám ảnh AI càn quét công sở Trung Quốc, đẩy triệu người vào cuộc chiến sinh tồn"
+      },
+      {
+        "id": "art-1778964429-9c76a8",
+        "file": "31-source-vietnamnet-phap-luat.png",
+        "title": "Đập kính ô tô trộm tài sản, kẻ có 6 tiền án sa lưới",
+        "label": "Pháp luật",
+        "confidence": 0.9946,
+        "status": "auto_approved",
+        "url": "https://vietnamnet.vn/chuyen-dap-kinh-o-to-trom-tai-san-ke-co-6-tien-an-sa-luoi-2499112.html",
+        "screenshot": "test-report-assets-full/31-source-vietnamnet-phap-luat.png",
+        "captureStatus": "ok",
+        "pageTitle": "Chuyên đập kính ô tô trộm tài sản, kẻ có 6 tiền án sa lưới"
+      },
+      {
+        "id": "art-1778966624-5d2f83",
+        "file": "32-source-vietnamnet-nam-cham.png",
+        "title": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi",
+        "label": "Đời sống",
+        "confidence": 0.4945,
+        "status": "escalated",
+        "url": "https://vietnamnet.vn/hang-chuc-vien-nam-cham-ket-thanh-chuoi-gay-thung-ruot-be-trai-5-tuoi-2499074.html",
+        "screenshot": "test-report-assets-full/32-source-vietnamnet-nam-cham.png",
+        "captureStatus": "ok",
+        "pageTitle": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi "
+      }
     ],
-    "monitoringJobStatus": "Completed monitoring_recompute job job-1778862834-957ed2eb; snapshot #2"
-  },
-  "artifacts": [
-    {
-      "file": "output/test-report-assets-full/00-api-health-model-service.png",
-      "note": "UC28 health check shows Postgres and model-service are ok."
+    "reviewQueue": {
+      "summary": "Showing 3 of 3 open stories",
+      "items": [
+        {
+          "id": "art-1778966625-4cde88",
+          "label": "Bạn đọc",
+          "title": "BHYT cho trẻ em dưới 6 tuổi: Miễn phí, quyền lợi, cách làm",
+          "confidence": 0.7301,
+          "margin": 0.4778,
+          "status": "review"
+        },
+        {
+          "id": "art-1778966624-5d2f83",
+          "label": "Đời sống",
+          "title": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi",
+          "confidence": 0.4945,
+          "margin": 0.1147,
+          "status": "escalated"
+        },
+        {
+          "id": "art-1778966622-4a8791",
+          "label": "Thị trường tiêu dùng",
+          "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+          "confidence": 0.503,
+          "margin": 0.1016,
+          "status": "escalated"
+        }
+      ]
     },
-    {
-      "file": "output/test-report-assets-full/01-source-vietnamnet-article.png",
-      "note": "VietnamNet source article used for the live URL import test."
+    "labelReview": {
+      "summary": "Showing 10 of 13 classified stories",
+      "labels": [
+        {
+          "id": "art-1778966625-4cde88",
+          "title": "BHYT cho trẻ em dưới 6 tuổi: Miễn phí, quyền lợi, cách làm",
+          "label": "Bạn đọc",
+          "confidence": 0.7301,
+          "status": "review"
+        },
+        {
+          "id": "art-1778966624-5d2f83",
+          "title": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi",
+          "label": "Đời sống",
+          "confidence": 0.4945,
+          "status": "escalated"
+        },
+        {
+          "id": "art-1778966623-27be57",
+          "title": "Quy tắc 3 giờ vào buổi tối có thể tốt cho tim mạch và tuổi thọ",
+          "label": "Sức khỏe",
+          "confidence": 0.9977,
+          "status": "auto_approved"
+        },
+        {
+          "id": "art-1778966622-4a8791",
+          "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+          "label": "Thị trường tiêu dùng",
+          "confidence": 0.503,
+          "status": "escalated"
+        },
+        {
+          "id": "art-1778964429-9c76a8",
+          "title": "Đập kính ô tô trộm tài sản, kẻ có 6 tiền án sa lưới",
+          "label": "Pháp luật",
+          "confidence": 0.9946,
+          "status": "auto_approved"
+        },
+        {
+          "id": "art-1778964428-c666ad",
+          "title": "Ám ảnh AI đẩy hàng triệu nhân viên công sở Trung Quốc vào cuộc chiến sinh tồn",
+          "label": "Công nghệ",
+          "confidence": 0.9845,
+          "status": "approved"
+        },
+        {
+          "id": "art-1778964427-a06803",
+          "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+          "label": "Sức khỏe",
+          "confidence": 0.503,
+          "status": "overridden"
+        },
+        {
+          "id": "art-1778964426-345197",
+          "title": "Man City đấu Arsenal, League Cup: Tất cả chống lại Pep Guardiola",
+          "label": "Thể thao",
+          "confidence": 0.9984,
+          "status": "approved"
+        },
+        {
+          "id": "art-1778964425-f2f6bd",
+          "title": "Giá vàng thế giới",
+          "label": "Kinh doanh",
+          "confidence": 0.9739,
+          "status": "approved"
+        },
+        {
+          "id": "art-1777181644-6bc563",
+          "title": "Tái hiện trang trọng bức thư của Bác Hồ giữa",
+          "label": "Dân tộc - Tôn giáo",
+          "confidence": 0.9983,
+          "status": "auto_approved"
+        }
+      ]
     },
-    {
-      "file": "output/test-report-assets-full/02-auth-login-editor-selected.png",
-      "note": "UC01 login screen with Editor role selected."
+    "monitoringSnapshot": {
+      "stats": [
+        {
+          "label": "Macro F1",
+          "value": "0.67",
+          "delta": "snapshot 10",
+          "tone": "teal"
+        },
+        {
+          "label": "Error share",
+          "value": "0.20",
+          "delta": "reviewed prediction errors",
+          "tone": "coral"
+        },
+        {
+          "label": "Drift score",
+          "value": "0.10",
+          "delta": "margin and review drift",
+          "tone": "gold"
+        },
+        {
+          "label": "Coverage",
+          "value": "69%",
+          "delta": "auto-ready stories",
+          "tone": "green"
+        }
+      ],
+      "labels": [
+        "Công nghệ",
+        "Kinh doanh",
+        "Pháp luật",
+        "Sức khỏe",
+        "Thể thao",
+        "Thị trường tiêu dùng"
+      ],
+      "labelScores": [
+        {
+          "label": "Công nghệ",
+          "value": 1,
+          "tone": "navy"
+        },
+        {
+          "label": "Kinh doanh",
+          "value": 1,
+          "tone": "teal"
+        },
+        {
+          "label": "Pháp luật",
+          "value": 1,
+          "tone": "violet"
+        },
+        {
+          "label": "Sức khỏe",
+          "value": 0,
+          "tone": "gold"
+        },
+        {
+          "label": "Thể thao",
+          "value": 1,
+          "tone": "coral"
+        },
+        {
+          "label": "Thị trường tiêu dùng",
+          "value": 0,
+          "tone": "green"
+        }
+      ],
+      "articleAnalysis": [
+        {
+          "note": "Articles still waiting for a human or policy decision",
+          "label": "Open review queue",
+          "value": "3"
+        },
+        {
+          "note": "Latest predictions joined with editor decisions",
+          "label": "Reviewed predictions",
+          "value": "5"
+        },
+        {
+          "note": "Inference results persisted from the model service",
+          "label": "Stored predictions",
+          "value": "15"
+        }
+      ],
+      "lastRunAt": "2026-05-16T21:32:19.311837+00:00"
     },
-    {
-      "file": "output/test-report-assets-full/03-editor-dashboard-empty-state.png",
-      "note": "UC03 Editor dashboard before importing the live VietnamNet article."
+    "datasetLab": {
+      "stats": [
+        {
+          "label": "Stored articles",
+          "value": "13",
+          "delta": "available for evaluation",
+          "tone": "muted"
+        },
+        {
+          "label": "Low-confidence pool",
+          "value": "13",
+          "delta": "lowest current scores",
+          "tone": "coral"
+        },
+        {
+          "label": "Drift score",
+          "value": "0.00",
+          "delta": "margin-based watch score",
+          "tone": "teal"
+        }
+      ],
+      "imbalance": [
+        {
+          "label": "Dân tộc - Tôn giáo",
+          "value": 0.3333,
+          "tone": "navy"
+        },
+        {
+          "label": "Sức khỏe",
+          "value": 0.1667,
+          "tone": "teal"
+        },
+        {
+          "label": "Thể thao",
+          "value": 0.0833,
+          "tone": "violet"
+        },
+        {
+          "label": "Pháp luật",
+          "value": 0.0833,
+          "tone": "gold"
+        },
+        {
+          "label": "Công nghệ",
+          "value": 0.0833,
+          "tone": "coral"
+        },
+        {
+          "label": "Kinh doanh",
+          "value": 0.0833,
+          "tone": "green"
+        },
+        {
+          "label": "Bạn đọc",
+          "value": 0.0833,
+          "tone": "pink"
+        },
+        {
+          "label": "Thị trường tiêu dùng",
+          "value": 0.0833,
+          "tone": "muted"
+        }
+      ],
+      "hardSamples": [
+        {
+          "title": "Hàng chục viên nam châm kết thành chuỗi gây thủng ruột bé trai 5 tuổi",
+          "score": 0.4945
+        },
+        {
+          "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+          "score": 0.503
+        },
+        {
+          "title": "Cầu cứu bác sĩ vì trào lưu uống một loại nước giảm cân",
+          "score": 0.503
+        },
+        {
+          "title": "BHYT cho trẻ em dưới 6 tuổi: Miễn phí, quyền lợi, cách làm",
+          "score": 0.7301
+        }
+      ],
+      "activeLearning": [
+        {
+          "title": "Low-confidence pool",
+          "value": "13",
+          "body": "Stories with low confidence or tight margins.",
+          "pill": "Input",
+          "tone": "coral"
+        },
+        {
+          "title": "Override queue",
+          "value": "1",
+          "body": "Human overrides waiting for the next annotation refresh.",
+          "pill": "Review",
+          "tone": "gold"
+        },
+        {
+          "title": "Escalation queue",
+          "value": "0",
+          "body": "Stories routed to Data Science.",
+          "pill": "Watch",
+          "tone": "teal"
+        },
+        {
+          "title": "Relabel batch",
+          "value": "1",
+          "body": "Priority records for the next training cycle.",
+          "pill": "Ready",
+          "tone": "green"
+        }
+      ]
     },
-    {
-      "file": "output/test-report-assets-full/04-editor-import-vietnamnet-url-form.png",
-      "note": "UC04 import form filled with the real VietnamNet article URL."
-    },
-    {
-      "file": "output/test-report-assets-full/05-editor-import-vietnamnet-job-complete.png",
-      "note": "UC04-UC06 worker import completed and the dashboard refreshed with the live article."
-    },
-    {
-      "file": "output/test-report-assets-full/06-editor-review-queue-vietnamnet.png",
-      "note": "UC08 Review Queue containing the imported VietnamNet article."
-    },
-    {
-      "file": "output/test-report-assets-full/07-editor-label-review-vietnamnet.png",
-      "note": "UC10 Label Review listing the classified VietnamNet article."
-    },
-    {
-      "file": "output/test-report-assets-full/08-editor-article-detail-before-rerun.png",
-      "note": "UC09 Article detail displays the real VietnamNet title, URL, prediction summary, and candidate ranking."
-    },
-    {
-      "file": "output/test-report-assets-full/09-editor-article-detail-real-rerun.png",
-      "note": "UC06/UC09 real PhoBERT rerun on the imported VietnamNet article, including confidence, candidates, and latency."
-    },
-    {
-      "file": "output/test-report-assets-full/10-editor-label-review-approved.png",
-      "note": "UC11 Decision persisted after approving the model label."
-    },
-    {
-      "file": "output/test-report-assets-full/11-auth-login-admin-selected.png",
-      "note": "UC01 login screen with Admin role selected."
-    },
-    {
-      "file": "output/test-report-assets-full/12-admin-ops-overview.png",
-      "note": "UC14 Admin Operations overview with users, routing rules, audit log, and deployment snapshot."
-    },
-    {
-      "file": "output/test-report-assets-full/13-admin-create-user-form.png",
-      "note": "UC15 Admin user invitation form opened."
-    },
-    {
-      "file": "output/test-report-assets-full/14-admin-edit-user-form.png",
-      "note": "UC16 Admin user edit form opened for role, queue, status, and password changes."
-    },
-    {
-      "file": "output/test-report-assets-full/15-admin-threshold-preview.png",
-      "note": "UC17-UC18 threshold preview after reading live article confidence distribution."
-    },
-    {
-      "file": "output/test-report-assets-full/16-auth-login-scientist-selected.png",
-      "note": "UC01 login screen with Data Scientist role selected."
-    },
-    {
-      "file": "output/test-report-assets-full/17-scientist-monitoring-before-recompute.png",
-      "note": "UC20 monitoring screen before manual recompute."
-    },
-    {
-      "file": "output/test-report-assets-full/18-scientist-monitoring-after-recompute.png",
-      "note": "UC21-UC22 monitoring recompute completed through worker."
-    },
-    {
-      "file": "output/test-report-assets-full/19-scientist-model-versions.png",
-      "note": "UC23-UC26 model versions screen with active package metadata, F1, confusion matrix, and exports."
-    },
-    {
-      "file": "output/test-report-assets-full/20-scientist-dataset-lab.png",
-      "note": "UC27 dataset lab screen with hard samples and active-learning loop."
+    "modelVersions": {
+      "selectedRun": {
+        "id": "run_1777197420559",
+        "backbone": "vinai/phobert-base-v2",
+        "uploaded": "browser upload",
+        "f1": 0.9016264097768871,
+        "state": "active"
+      },
+      "runs": [
+        {
+          "id": "run_1777197420559",
+          "backbone": "vinai/phobert-base-v2",
+          "uploaded": "browser upload",
+          "f1": 0.9016264097768871,
+          "state": "active"
+        }
+      ]
     }
-  ]
+  },
+  "screenshots": [
+    "output/test-report-assets-full/00-api-health-model-service.png",
+    "output/test-report-assets-full/01-source-vietnamnet-article.png",
+    "output/test-report-assets-full/27-source-vietnamnet-gia-vang.png",
+    "output/test-report-assets-full/28-source-vietnamnet-man-city.png",
+    "output/test-report-assets-full/29-source-vietnamnet-giam-can.png",
+    "output/test-report-assets-full/30-source-vietnamnet-ai-cong-so.png",
+    "output/test-report-assets-full/31-source-vietnamnet-phap-luat.png",
+    "output/test-report-assets-full/32-source-vietnamnet-nam-cham.png",
+    "output/test-report-assets-full/02-auth-login-editor-selected.png",
+    "output/test-report-assets-full/03-editor-dashboard-empty-state.png",
+    "output/test-report-assets-full/04-editor-import-vietnamnet-url-form.png",
+    "output/test-report-assets-full/05-editor-import-vietnamnet-job-complete.png",
+    "output/test-report-assets-full/06-editor-review-queue-vietnamnet.png",
+    "output/test-report-assets-full/25-editor-open-review-queue-records.png",
+    "output/test-report-assets-full/07-editor-label-review-vietnamnet.png",
+    "output/test-report-assets-full/10-editor-label-review-approved.png",
+    "output/test-report-assets-full/21-editor-label-review-multi-label.png",
+    "output/test-report-assets-full/08-editor-article-detail-open-review.png",
+    "output/test-report-assets-full/26-editor-open-review-detail-real-inference.png",
+    "output/test-report-assets-full/22-editor-article-detail-multi-label-low-confidence.png",
+    "output/test-report-assets-full/11-auth-login-admin-selected.png",
+    "output/test-report-assets-full/12-admin-ops-overview.png",
+    "output/test-report-assets-full/13-admin-create-user-form.png",
+    "output/test-report-assets-full/14-admin-edit-user-form.png",
+    "output/test-report-assets-full/15-admin-threshold-preview.png",
+    "output/test-report-assets-full/16-auth-login-scientist-selected.png",
+    "output/test-report-assets-full/17-scientist-monitoring-before-recompute.png",
+    "output/test-report-assets-full/18-scientist-monitoring-after-recompute.png",
+    "output/test-report-assets-full/23-scientist-monitoring-multi-label.png",
+    "output/test-report-assets-full/19-scientist-model-versions.png",
+    "output/test-report-assets-full/20-scientist-dataset-lab.png",
+    "output/test-report-assets-full/24-scientist-dataset-lab-multi-label.png"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_CONNECTION_RESET",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode.",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode.",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode.",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode.",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode.",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode.",
+    "Failed to load resource: net::ERR_CONNECTION_RESET",
+    "[GSI_LOGGER]: FedCM get() rejects with TypeError: Failed to execute 'get' on 'CredentialsContainer': Failed to read the 'identity' property from 'CredentialRequestOptions': Failed to read the 'mode' property from 'IdentityCredentialRequestOptions': The provided value 'widget' is not a valid enum value of type IdentityCredentialRequestOptionsMode."
+  ],
+  "pageErrors": []
 }
