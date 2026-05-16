@@ -124,7 +124,7 @@ export function ModelVersionsPage() {
 
   return (
     <AppShell chips={data.chips} heading={data.heading} subheading={data.subheading} sidebar={data.sidebar}>
-      <div className="two-column">
+      <div className="two-column model-version-detail-grid">
         <Surface className="table-panel">
           <div className="section-heading">
             <div>
@@ -250,7 +250,7 @@ export function ModelVersionsPage() {
         </Surface>
       </div>
 
-      <div className="three-column">
+      <div className="three-column model-version-detail-grid">
         <Surface>
           <div className="section-heading">
             <div>

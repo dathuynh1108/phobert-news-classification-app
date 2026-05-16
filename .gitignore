@@ -24,3 +24,4 @@ model-service/.venv/
 tmp/
 ui/vite.config.js
 ui/vite.config.d.ts
+output/*

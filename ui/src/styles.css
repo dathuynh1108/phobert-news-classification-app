@@ -624,6 +624,10 @@ textarea {
   gap: 1rem;
 }
 
+.model-version-detail-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(21rem, 26.5rem);
+}
+
 .section-heading {
   display: flex;
   gap: 1rem;
@@ -1020,6 +1024,11 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.model-version-detail-grid .snapshot-card strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .analysis-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1111,34 +1120,37 @@ th {
 
 .heat-matrix.dense {
   gap: 0.22rem;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
 .heat-matrix.dense .heat-axis,
 .heat-matrix.dense .heat-cell {
-  min-height: 2.05rem;
+  min-height: 1.9rem;
   border-radius: 0.25rem;
 }
 
 .heat-matrix.dense .heat-axis {
-  min-width: 2.05rem;
+  min-width: 0;
   padding: 0.16rem 0.2rem;
   font-size: 0.6rem;
 }
 
 .heat-matrix.dense .heat-axis-column {
-  max-width: 2.05rem;
+  max-width: none;
 }
 
 .heat-matrix.dense .heat-axis-row {
-  max-width: 7rem;
+  max-width: 10rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .heat-matrix.dense .heat-cell {
-  min-width: 2.05rem;
+  aspect-ratio: auto;
+  min-width: 0;
   font-size: 0.62rem;
 }
 

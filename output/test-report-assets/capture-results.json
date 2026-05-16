@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-05-15T16:00:33.036Z",
+  "facts": {
+    "healthText": "{\"status\":\"ok\",\"database\":{\"ok\":true},\"model_service\":{\"ok\":true,\"model_version\":\"active\",\"latency_ms\":502}}",
+    "articleId": "art-1778860822-d5555a",
+    "importJobStatus": "Imported article art-1778860822-d5555a",
+    "predictionLabel": "Education",
+    "predictionConfidence": "Confidence 0.99",
+    "inferenceHistory": "Inference auto-approved · 77ms",
+    "candidateRanking": [
+      "Education (top-1)",
+      "Readers (top-2)",
+      "Ethnic & Religion (top-3)"
+    ],
+    "monitoringJobStatus": "Completed monitoring_recompute job job-1778860829-44d50d71; snapshot #2"
+  },
+  "artifacts": [
+    {
+      "file": "output/test-report-assets/00-api-health-model-service.png",
+      "note": "API health endpoint shows database ok and model_service ok with active model latency."
+    },
+    {
+      "file": "output/test-report-assets/01-auth-login-editor.png",
+      "note": "UC01 login screen with role-based workspace selection."
+    },
+    {
+      "file": "output/test-report-assets/02-editor-dashboard-before-import.png",
+      "note": "UC03 editor dashboard after successful login."
+    },
+    {
+      "file": "output/test-report-assets/03-editor-import-worker-inference-complete.png",
+      "note": "UC04-UC06 import job completed through worker and persisted a model-backed prediction."
+    },
+    {
+      "file": "output/test-report-assets/04-review-queue-open-stories.png",
+      "note": "UC08 review queue after importing a classified article."
+    },
+    {
+      "file": "output/test-report-assets/05-article-review-real-inference.png",
+      "note": "UC09-UC11 article detail after rerunning real PhoBERT inference, showing label, confidence, candidates, and latency."
+    },
+    {
+      "file": "output/test-report-assets/06-label-review-decision-persisted.png",
+      "note": "UC10-UC11 label review after editor decision is saved."
+    },
+    {
+      "file": "output/test-report-assets/07-admin-ops-thresholds-users-model.png",
+      "note": "UC14-UC19 admin operations with users, threshold preview, audit log, and active model package."
+    },
+    {
+      "file": "output/test-report-assets/08-monitoring-recompute-worker.png",
+      "note": "UC20-UC22 monitoring recompute through worker, based on stored prediction and editor decision data."
+    },
+    {
+      "file": "output/test-report-assets/09-model-versions-active-artifact.png",
+      "note": "UC23-UC26 model versions page showing the packaged PhoBERT run, F1, confusion matrix, and exports."
+    },
+    {
+      "file": "output/test-report-assets/10-dataset-lab-hard-samples.png",
+      "note": "UC27 dataset lab with low-confidence/hard sample pool derived from live predictions."
+    }
+  ]
+}

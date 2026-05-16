@@ -1,16 +1,3 @@
-pandas
-numpy
-torch
-matplotlib
-seaborn
-tqdm
-scikit-learn
-transformers
-pyarrow
-scipy
-accelerate
-pyvi
-joblib
-requests
-beautifulsoup4
-lxml
+version https://git-lfs.github.com/spec/v1
+oid sha256:88991a3a1c3fa20c6c01379d1508f1448b341fc56937d874ffd41c1bdfdc4723
+size 135

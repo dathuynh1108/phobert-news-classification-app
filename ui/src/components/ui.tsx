@@ -256,7 +256,7 @@ export function HeatMatrix({ values, labels }: { values: number[][]; labels?: st
   const gridStyle: CSSProperties = {
     gridTemplateColumns: hasLabels
       ? isDense
-        ? `minmax(7rem, 7rem) repeat(${labels?.length ?? columns}, 2.05rem)`
+        ? `minmax(10rem, 10rem) repeat(${labels?.length ?? columns}, minmax(0, 1fr))`
         : `minmax(8rem, 1.25fr) repeat(${labels?.length ?? columns}, minmax(3rem, 1fr))`
       : `repeat(${columns}, minmax(0, 1fr))`,
   };

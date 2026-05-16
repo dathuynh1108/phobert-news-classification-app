@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-05-15T16:33:58.294Z",
+  "facts": {
+    "articleUrl": "https://vietnamnet.vn/xu-huong-mo-nganh-tri-tue-nhan-tao-o-nhieu-truong-dai-hoc-nam-2026-2490362.html",
+    "healthText": "{\"status\":\"ok\",\"database\":{\"ok\":true},\"model_service\":{\"ok\":true,\"model_version\":\"active\",\"latency_ms\":448}}",
+    "sourceTitle": "Làn sóng mở ngành Trí tuệ nhân tạo ở nhiều trường đại học năm 2026",
+    "importJobStatus": "Imported article art-1778862824-d6e1a1",
+    "articleId": "art-1778862824-d6e1a1",
+    "predictionLabel": "Education",
+    "predictionConfidence": "Confidence 1.00",
+    "inferenceHistory": "Inference auto-approved · 186ms",
+    "candidateRanking": [
+      "Education (top-1)",
+      "Readers (top-2)",
+      "Consumer Protection (top-3)"
+    ],
+    "monitoringJobStatus": "Completed monitoring_recompute job job-1778862834-957ed2eb; snapshot #2"
+  },
+  "artifacts": [
+    {
+      "file": "output/test-report-assets-full/00-api-health-model-service.png",
+      "note": "UC28 health check shows Postgres and model-service are ok."
+    },
+    {
+      "file": "output/test-report-assets-full/01-source-vietnamnet-article.png",
+      "note": "VietnamNet source article used for the live URL import test."
+    },
+    {
+      "file": "output/test-report-assets-full/02-auth-login-editor-selected.png",
+      "note": "UC01 login screen with Editor role selected."
+    },
+    {
+      "file": "output/test-report-assets-full/03-editor-dashboard-empty-state.png",
+      "note": "UC03 Editor dashboard before importing the live VietnamNet article."
+    },
+    {
+      "file": "output/test-report-assets-full/04-editor-import-vietnamnet-url-form.png",
+      "note": "UC04 import form filled with the real VietnamNet article URL."
+    },
+    {
+      "file": "output/test-report-assets-full/05-editor-import-vietnamnet-job-complete.png",
+      "note": "UC04-UC06 worker import completed and the dashboard refreshed with the live article."
+    },
+    {
+      "file": "output/test-report-assets-full/06-editor-review-queue-vietnamnet.png",
+      "note": "UC08 Review Queue containing the imported VietnamNet article."
+    },
+    {
+      "file": "output/test-report-assets-full/07-editor-label-review-vietnamnet.png",
+      "note": "UC10 Label Review listing the classified VietnamNet article."
+    },
+    {
+      "file": "output/test-report-assets-full/08-editor-article-detail-before-rerun.png",
+      "note": "UC09 Article detail displays the real VietnamNet title, URL, prediction summary, and candidate ranking."
+    },
+    {
+      "file": "output/test-report-assets-full/09-editor-article-detail-real-rerun.png",
+      "note": "UC06/UC09 real PhoBERT rerun on the imported VietnamNet article, including confidence, candidates, and latency."
+    },
+    {
+      "file": "output/test-report-assets-full/10-editor-label-review-approved.png",
+      "note": "UC11 Decision persisted after approving the model label."
+    },
+    {
+      "file": "output/test-report-assets-full/11-auth-login-admin-selected.png",
+      "note": "UC01 login screen with Admin role selected."
+    },
+    {
+      "file": "output/test-report-assets-full/12-admin-ops-overview.png",
+      "note": "UC14 Admin Operations overview with users, routing rules, audit log, and deployment snapshot."
+    },
+    {
+      "file": "output/test-report-assets-full/13-admin-create-user-form.png",
+      "note": "UC15 Admin user invitation form opened."
+    },
+    {
+      "file": "output/test-report-assets-full/14-admin-edit-user-form.png",
+      "note": "UC16 Admin user edit form opened for role, queue, status, and password changes."
+    },
+    {
+      "file": "output/test-report-assets-full/15-admin-threshold-preview.png",
+      "note": "UC17-UC18 threshold preview after reading live article confidence distribution."
+    },
+    {
+      "file": "output/test-report-assets-full/16-auth-login-scientist-selected.png",
+      "note": "UC01 login screen with Data Scientist role selected."
+    },
+    {
+      "file": "output/test-report-assets-full/17-scientist-monitoring-before-recompute.png",
+      "note": "UC20 monitoring screen before manual recompute."
+    },
+    {
+      "file": "output/test-report-assets-full/18-scientist-monitoring-after-recompute.png",
+      "note": "UC21-UC22 monitoring recompute completed through worker."
+    },
+    {
+      "file": "output/test-report-assets-full/19-scientist-model-versions.png",
+      "note": "UC23-UC26 model versions screen with active package metadata, F1, confusion matrix, and exports."
+    },
+    {
+      "file": "output/test-report-assets-full/20-scientist-dataset-lab.png",
+      "note": "UC27 dataset lab screen with hard samples and active-learning loop."
+    }
+  ]
+}
