@@ -287,18 +287,131 @@ Endpoints:
 
 The training implementation is in `train/notebooks/main_PhoBERT.ipynb`. The app services do not retrain the model at startup; they only load the exported artifact from `train/artifacts/active/`.
 
+### Training entrypoint
+
+Use this notebook for training:
+
+```text
+train/notebooks/main_PhoBERT.ipynb
+```
+
+The notebook is designed to run in Colab, Kaggle, or local Jupyter. It fine-tunes `vinai/phobert-base-v2` for 19 VietnamNet news labels and writes outputs under the repo-style workspace:
+
+```text
+dataset/
+train/runs/temp/
+train/runs/results/
+train/runs/model/
+train/artifacts/active/
+```
+
+### Dataset preparation
+
+The notebook expects data under:
+
+```text
+dataset/
+```
+
+Default behavior:
+
+- If `dataset/` is empty, the notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face.
+- If only `dataset/data_URLs.json` is available, the notebook can crawl/materialize title/content parquet files.
+- If the Hugging Face dataset is private, provide `HF_TOKEN` as a Colab/Kaggle secret or environment variable. Do not hardcode tokens.
+
+To materialize the dataset outside the notebook:
+
+```bash
+python train/scripts/materialize_vietnamnet_dataset.py
+```
+
+### Runtime knobs
+
+Notebook Section `0.3 Paths and training configuration` centralizes the train settings:
+
+- `VNN_REPO_ROOT`: workspace root. Defaults to the current working directory.
+- `VNN_DATASET_DIR`: dataset folder. Defaults to `<repo>/dataset`.
+- `VNN_MAX_ROWS_PER_CLASS=0`: use the full dataset. Set a positive number only for smoke tests.
+- `VNN_BATCH_SIZE`, `VNN_GRAD_ACCUM`, `VNN_EVAL_BATCH`, `VNN_NUM_EPOCHS`: override CUDA defaults when needed.
+- `VNN_AUTO_DOWNLOAD_DATASET=1`: auto-download the Hugging Face dataset when local data is missing.
+
 1. Open `train/notebooks/main_PhoBERT.ipynb` in Colab, Kaggle, or local Jupyter.
 2. Run all cells. The notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face when `./dataset` is empty, or materializes parquet files from `dataset/data_URLs.json` when provided.
 3. Train the model and export the Hugging Face/PhoBERT model directory.
-4. Copy/package the output into the runtime artifact folder:
+4. Copy or package the output into the runtime artifact folder.
+
+### Training outputs
+
+Expected training outputs:
+
+```text
+train/runs/model/              # Hugging Face/PhoBERT model package
+train/runs/results/            # evaluation reports, curves, and metrics
+train/artifacts/active/        # artifact loaded by model-service
+```
+
+The deployable artifact must contain:
+
+```text
+config.json
+label_config.json
+model.safetensors or pytorch_model.bin
+tokenizer_config.json
+vocab.txt
+bpe.codes
+metrics.json
+confusion_matrix.json
+classification_report.json
+thresholds.json
+```
+
+`thresholds.json` is optional for manual uploads because the API can create a default threshold file, but final trained artifacts should include it.
+
+### Package for inference
+
+If the notebook ran inside this repo and produced `train/runs/model`, package the active artifact with:
 
 ```bash
 python train/scripts/package_run.py \
   --model-dir train/runs/model \
+  --results-dir train/runs/results \
   --output-dir train/artifacts/active
 ```
 
-If the notebook ran outside this repo, copy the downloaded artifact folder into `train/artifacts/active/` before running `docker compose up --build -d`.
+The notebook also writes/syncs the deployable package to `train/artifacts/active/` during the export cells. The command above is the explicit repeatable handoff step when you want to rebuild the active artifact from saved training outputs.
+
+If the notebook ran outside this repo, download the exported artifact folder or zip, then copy it into the local repo before starting Docker Compose:
+
+```bash
+mkdir -p train/artifacts/active
+rsync -a /path/to/exported_phobert_artifact/ train/artifacts/active/
+```
+
+For a zip:
+
+```bash
+rm -rf train/artifacts/active
+mkdir -p train/artifacts/active
+unzip /path/to/exported_phobert_artifact.zip -d train/artifacts/active
+```
+
+After copying, verify the active artifact:
+
+```bash
+ls train/artifacts/active
+test -f train/artifacts/active/config.json
+test -f train/artifacts/active/label_config.json
+test -f train/artifacts/active/model.safetensors || test -f train/artifacts/active/pytorch_model.bin
+```
+
+Then start the local cluster:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+If `train/artifacts/active/` is missing or invalid, `model-service` exits instead of serving fake predictions.
 
 ## Notes
 

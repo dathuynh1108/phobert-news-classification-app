@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-16T21:32:27.434Z",
+  "generatedAt": "2026-05-17T13:04:44.889Z",
   "facts": {
-    "recapturedAt": "2026-05-16T21:32:27.434Z",
+    "recapturedAt": "2026-05-17T13:04:44.889Z",
     "health": {
       "status": "ok",
       "database": {
@@ -209,7 +209,7 @@
         {
           "label": "Macro F1",
           "value": "0.67",
-          "delta": "snapshot 10",
+          "delta": "snapshot 23",
           "tone": "teal"
         },
         {
@@ -230,6 +230,54 @@
           "delta": "auto-ready stories",
           "tone": "green"
         }
+      ],
+      "macroSeries": [
+        0.6667,
+        0.6667,
+        0.6667,
+        0.6667,
+        0.6667,
+        0.6667
+      ],
+      "macroSeriesPoints": [
+        {
+          "id": 18,
+          "value": 0.6667,
+          "created_at": "2026-05-17T01:30:00.855889+00:00"
+        },
+        {
+          "id": 19,
+          "value": 0.6667,
+          "created_at": "2026-05-17T12:54:00.214232+00:00"
+        },
+        {
+          "id": 20,
+          "value": 0.6667,
+          "created_at": "2026-05-17T12:58:07.948152+00:00"
+        },
+        {
+          "id": 21,
+          "value": 0.6667,
+          "created_at": "2026-05-17T12:59:08.282288+00:00"
+        },
+        {
+          "id": 22,
+          "value": 0.6667,
+          "created_at": "2026-05-17T13:00:31.512466+00:00"
+        },
+        {
+          "id": 23,
+          "value": 0.6667,
+          "created_at": "2026-05-17T13:04:35.528009+00:00"
+        }
+      ],
+      "macroSeriesLabels": [
+        "S18",
+        "S19",
+        "S20",
+        "S21",
+        "S22",
+        "S23"
       ],
       "labels": [
         "Công nghệ",
@@ -288,7 +336,7 @@
           "value": "15"
         }
       ],
-      "lastRunAt": "2026-05-16T21:32:19.311837+00:00"
+      "lastRunAt": "2026-05-17T13:04:35.528009+00:00"
     },
     "datasetLab": {
       "stats": [
@@ -418,6 +466,33 @@
           "f1": 0.9016264097768871,
           "state": "active"
         }
+      ]
+    },
+    "monitoringRecapture": {
+      "waitPolicy": "networkidle + fonts loaded + snapshot labels S{id} + spark chart values + stable layout + 2.5s render buffer; 3s after recompute completion",
+      "beforeSnapshot": "snapshot 22",
+      "beforeLabels": [
+        "S17",
+        "S18",
+        "S19",
+        "S20",
+        "S21",
+        "S22"
+      ],
+      "afterSnapshot": "snapshot 23",
+      "afterLabels": [
+        "S18",
+        "S19",
+        "S20",
+        "S21",
+        "S22",
+        "S23"
+      ],
+      "jobStatus": "Completed monitoring_recompute job job-1779023075-06eb291e; snapshot #23",
+      "files": [
+        "output/test-report-assets-full/17-scientist-monitoring-before-recompute.png",
+        "output/test-report-assets-full/18-scientist-monitoring-after-recompute.png",
+        "output/test-report-assets-full/23-scientist-monitoring-multi-label.png"
       ]
     }
   },

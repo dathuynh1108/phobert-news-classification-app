@@ -110,7 +110,7 @@ export function MonitoringPage() {
               <p>Track model quality across the evaluation window used to warn production before performance drops.</p>
             </div>
           </div>
-          <VerticalBars values={data.macroSeries} />
+          <VerticalBars points={data.macroSeriesPoints} values={data.macroSeries} />
         </Surface>
 
         <Surface>

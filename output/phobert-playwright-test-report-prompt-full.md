@@ -661,13 +661,15 @@ Luồng thay thế & Nếu database hoặc model-service không sẵn sàng, hea
 
 ### Monitoring / Dataset Lab
 
-- Monitoring snapshot: `snapshot 10`.
+- Monitoring snapshot trước recompute trong ảnh `17-scientist-monitoring-before-recompute.png`: `snapshot 22`.
+- Monitoring snapshot sau recompute trong ảnh `18-scientist-monitoring-after-recompute.png` và `23-scientist-monitoring-multi-label.png`: `snapshot 23`.
 - Macro F1 `0.67`, Error share `0.20`, Drift score `0.10`, Coverage `69%`.
+- Macro F1 chart dùng nhãn snapshot thật: trước recompute `S17` đến `S22`; sau recompute `S18` đến `S23`.
 - Article analysis: `Open review queue = 3`, `Reviewed predictions = 5`, `Stored predictions = 15`.
 - Per-label F1 có 6 nhãn: `Công nghệ`, `Kinh doanh`, `Pháp luật`, `Sức khỏe`, `Thể thao`, `Thị trường tiêu dùng`.
 - Dataset Lab có `13` stored articles, low-confidence pool `13`.
 - Label imbalance có nhiều nhãn: `Dân tộc - Tôn giáo`, `Sức khỏe`, `Thể thao`, `Pháp luật`, `Công nghệ`, `Kinh doanh`, `Bạn đọc`, `Thị trường tiêu dùng`.
-- Latest recompute worker job: `job-1778967139-38d1127b`, `monitoring_recompute`, status `completed`, created by `scientist@vnn-lab.edu.vn`.
+- Latest recompute worker job: `job-1779023075-06eb291e`, `monitoring_recompute`, status `completed`, created by `scientist@vnn-lab.edu.vn`.
 
 ## Ảnh source bài báo thật
 
@@ -710,7 +712,7 @@ Trong report, hãy dùng bảng này để tránh claim sai. Cột `Mức bằng
 | UC19 | Full UI evidence | Preview threshold impact chạy và hiển thị Auto-ready/Manual review/Escalate. | `15-admin-threshold-preview.png` |
 | UC20 | Not executed in this capture | Không mark pass promote model từ Admin Ops. | Không có screenshot/action riêng |
 | UC21 | Full UI evidence | Monitoring dashboard hiển thị snapshot, macro F1, drift và per-label metrics. | `17-scientist-monitoring-before-recompute.png`, `23-scientist-monitoring-multi-label.png` |
-| UC22 | Full UI + worker evidence | Recompute qua worker completed và dashboard cập nhật snapshot. | `18-scientist-monitoring-after-recompute.png`, `23-scientist-monitoring-multi-label.png`; job `job-1778967139-38d1127b` |
+| UC22 | Full UI + worker evidence | Recompute qua worker completed và dashboard cập nhật snapshot. | `18-scientist-monitoring-after-recompute.png`, `23-scientist-monitoring-multi-label.png`; job `job-1779023075-06eb291e` |
 | UC23 | Full UI evidence | Model Versions hiển thị active run, F1 và package details. | `19-scientist-model-versions.png` |
 | UC24 | UI control evidence only | Upload artifact control hiển thị; không claim upload mới. | `19-scientist-model-versions.png` |
 | UC25 | UI control evidence only | Set as active control hiển thị; không claim activate artifact mới. | `19-scientist-model-versions.png` |
@@ -752,7 +754,7 @@ Dùng bảng test report sau cho mục `5.3.1 Kết quả kiểm thử chức n�
 | TC-018 | UC20 | Admin | Có candidate model run hợp lệ. | Promote model từ Admin Ops. | Active model được đổi sang candidate run. | Không chạy trong lượt capture này để tránh đổi active artifact. | Not executed | Không có ảnh minh chứng. |
 | TC-019 | UC01 | Data Scientist | Tài khoản Data Scientist bootstrap tồn tại. | Mở login, chọn role Data Scientist, nhập email/password. | Login form chọn đúng role Data Scientist. | Màn hình login hiển thị role Data Scientist và credentials tương ứng. | Pass | `test-report-assets-full/16-auth-login-scientist-selected.png` |
 | TC-020 | UC21 | Data Scientist | Data Scientist đã đăng nhập; có predictions/decisions. | Mở Monitoring dashboard trước recompute. | Dashboard hiển thị evaluation snapshot, macro F1, drift, per-label F1, confusion matrix và slice analysis. | Monitoring hiển thị snapshot hiện tại, Macro F1, Error share, Drift score, Coverage và per-label metrics. | Pass | `test-report-assets-full/17-scientist-monitoring-before-recompute.png` |
-| TC-021 | UC22 | Data Scientist | Redis và worker-service đang chạy. | Bấm Recompute, đợi worker job completed, refresh dashboard. | Worker job completed; snapshot mới cập nhật trên dashboard. | Job `job-1778967139-38d1127b` completed; snapshot `10`, Macro F1 `0.67`, Open review queue `3`. | Pass | `test-report-assets-full/18-scientist-monitoring-after-recompute.png`, `test-report-assets-full/23-scientist-monitoring-multi-label.png` |
+| TC-021 | UC22 | Data Scientist | Redis và worker-service đang chạy. | Bấm Recompute, đợi worker job completed, refresh dashboard. | Worker job completed; snapshot mới cập nhật trên dashboard. | Job `job-1779023075-06eb291e` completed; snapshot `23`, Macro F1 `0.67`, Open review queue `3`. | Pass | `test-report-assets-full/18-scientist-monitoring-after-recompute.png`, `test-report-assets-full/23-scientist-monitoring-multi-label.png` |
 | TC-022 | UC23 | Data Scientist | Có active model artifact. | Mở Model Versions. | Trang hiển thị uploaded runs, active run, F1, confusion matrix, package details và exports. | Model Versions hiển thị active run `run_1777197420559`, macro-F1 artifact và package details. | Pass | `test-report-assets-full/19-scientist-model-versions.png` |
 | TC-023 | UC24 | Data Scientist | Data Scientist ở Model Versions. | Kiểm tra Upload artifacts control. | UI có control upload và mô tả required package files. | Upload artifacts control và required package section hiển thị. Không upload artifact mới trong lượt capture. | Observed | `test-report-assets-full/19-scientist-model-versions.png` |
 | TC-024 | UC25 | Data Scientist | Có selected model run. | Kiểm tra Set as active control. | UI có nút Set as active cho selected run. | Nút Set as active hiển thị. Không activate artifact mới trong lượt capture. | Observed | `test-report-assets-full/19-scientist-model-versions.png` |

@@ -228,18 +228,50 @@ export function ProgressList({
   );
 }
 
-export function VerticalBars({ values }: { values: number[] }) {
-  if (!values.length) {
+export function VerticalBars({
+  values,
+  points = [],
+}: {
+  values: number[];
+  points?: Array<{ id: number; value: number; createdAt: string }>;
+}) {
+  const chartPoints = points.length
+    ? points.map((point) => ({
+        label: `S${point.id}`,
+        title: `Snapshot ${point.id}: ${formatScore(point.value)}`,
+        value: point.value,
+      }))
+    : values.map((value, index) => ({
+        label: index === values.length - 1 ? "Latest" : `Run ${index + 1}`,
+        title: `${index === values.length - 1 ? "Latest" : `Run ${index + 1}`}: ${formatScore(value)}`,
+        value,
+      }));
+  const boundedPoints = chartPoints
+    .filter((point) => Number.isFinite(point.value))
+    .map((point) => ({ ...point, value: Math.max(0, Math.min(1, point.value)) }));
+
+  if (!boundedPoints.length) {
     return <p className="empty-state">N/A</p>;
   }
 
   return (
-    <div className="spark-bars">
-      {values.map((value, index) => (
-        <div className="spark-bar-shell" key={`${value}-${index}`}>
-          <div className="spark-bar" style={{ height: `${Math.max(16, value * 160)}px` }} />
-        </div>
-      ))}
+    <div className="spark-chart" aria-label="Macro F1 over time chart">
+      <div className="spark-y-axis" aria-hidden="true">
+        <span>1.00</span>
+        <span>0.50</span>
+        <span>0.00</span>
+      </div>
+      <div className="spark-bars">
+        {boundedPoints.map((point, index) => (
+          <div className="spark-bar-group" key={`${point.label}-${index}`} title={point.title}>
+            <span className="spark-value">{formatScore(point.value)}</span>
+            <div className="spark-bar-shell">
+              <div className="spark-bar" style={{ height: `${Math.max(12, point.value * 100)}%` }} />
+            </div>
+            <span className="spark-label">{point.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

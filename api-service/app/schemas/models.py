@@ -111,6 +111,12 @@ class ProgressDatumResponse(ApiModel):
     tone: Tone
 
 
+class MacroSeriesPointResponse(ApiModel):
+    id: int
+    value: float
+    created_at: str
+
+
 class ConfusionMatrixResponse(ApiModel):
     labels: list[str] = Field(default_factory=list)
     matrix: list[list[int]] = Field(default_factory=list)
@@ -278,6 +284,7 @@ class AdminOpsResponse(BaseScreenResponse):
 class MonitoringResponse(BaseScreenResponse):
     stats: list[StatCardResponse]
     macro_series: list[float]
+    macro_series_points: list[MacroSeriesPointResponse]
     label_scores: list[ProgressDatumResponse]
     confusion_matrix: ConfusionMatrixResponse
     per_class_metrics: list[PerClassMetricResponse]

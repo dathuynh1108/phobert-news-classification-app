@@ -67,6 +67,12 @@ export interface PerClassMetric {
   fn: number;
 }
 
+export interface MacroSeriesPoint {
+  id: number;
+  value: number;
+  createdAt: string;
+}
+
 export interface ReviewQueueItem {
   id: string;
   label: string;
@@ -174,6 +180,7 @@ export interface MonitoringScreen {
   sidebar: SidebarData;
   stats: StatCardData[];
   macroSeries: number[];
+  macroSeriesPoints: MacroSeriesPoint[];
   labelScores: ProgressDatum[];
   confusionMatrix: ConfusionMatrixData;
   perClassMetrics: PerClassMetric[];

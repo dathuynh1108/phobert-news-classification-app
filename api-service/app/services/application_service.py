@@ -787,6 +787,10 @@ class ApplicationService:
             snapshot = recomputed if recomputed.get("status") == "ok" else None
         series = list(reversed(self._repository.list_monitoring_runs(limit=6))) if snapshot else []
         macro_series = [round(item["macro_f1"], 4) for item in series]
+        macro_series_points = [
+            {"id": item["id"], "value": round(item["macro_f1"], 4), "created_at": item["created_at"]}
+            for item in series
+        ]
         drift_score = snapshot["drift_score"] if snapshot else (min(1.0, metrics["narrow_margin"] / metrics["total"]) if metrics["total"] else None)
         coverage = snapshot["coverage"] if snapshot else (metrics["auto_rate"] if metrics["total"] else None)
         sidebar_summary = (
@@ -810,6 +814,7 @@ class ApplicationService:
                 {"label": "Coverage", "value": _format_percent(coverage), "delta": "auto-ready stories" if metrics["total"] else "No stored articles", "tone": "green"},
             ],
             macro_series=macro_series,
+            macro_series_points=macro_series_points,
             label_scores=[{"label": item["label"], "value": item["value"], "tone": _tone(index)} for index, item in enumerate(snapshot["label_scores"])] if snapshot else [],
             confusion_matrix=snapshot["confusion_matrix"] if snapshot else {"labels": [], "matrix": []},
             per_class_metrics=snapshot["per_class_metrics"] if snapshot else [],
