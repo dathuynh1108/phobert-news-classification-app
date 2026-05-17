@@ -65,7 +65,78 @@ The script will:
 2. Copy the generated file to `api-service/app/generated/classifier_pb2.py`.
 3. Normalize the generated file to avoid runtime-version guards from the local `protoc`.
 
-## Start Locally
+## Quick Demo Start
+
+For recording or demo, start the whole local cluster with Docker Compose. Do not start each service manually unless you are debugging one service.
+
+### 1. Prepare the active PhoBERT artifact
+
+Training code lives in the notebook:
+
+```text
+train/notebooks/main_PhoBERT.ipynb
+```
+
+Open that notebook in Colab/Kaggle/local Jupyter and run all cells. After training, the runtime service must be able to read a Hugging Face/PhoBERT artifact from:
+
+```text
+train/artifacts/active/
+```
+
+If the trained model is already in this repo at `train/runs/model`, package it into the active runtime folder:
+
+```bash
+python train/scripts/package_run.py \
+  --model-dir train/runs/model \
+  --output-dir train/artifacts/active
+```
+
+If the notebook ran on Colab or another machine, download the exported artifact folder or zip, then copy or unzip it into `train/artifacts/active/` in this local repo:
+
+```bash
+mkdir -p train/artifacts/active
+rsync -a /path/to/exported_phobert_artifact/ train/artifacts/active/
+```
+
+The active folder must contain files such as `config.json`, `model.safetensors` or `pytorch_model.bin`, tokenizer files, and `label_config.json`. `model-service` exits on startup when this folder is missing or invalid.
+
+### 2. Start the local cluster
+
+From the repo root:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+Open the UI:
+
+```text
+http://localhost:5173
+```
+
+Useful runtime endpoints:
+
+- UI: `http://localhost:5173`
+- API health: `http://localhost:8000/api/health`
+- Redis: `localhost:6379`
+- gRPC model service: `localhost:50051`
+
+Default bootstrap accounts use the password `vnn-password`:
+
+- `editor@vnn-lab.edu.vn`
+- `admin@vnn-lab.edu.vn`
+- `scientist@vnn-lab.edu.vn`
+
+Stop the local cluster:
+
+```bash
+docker compose down
+```
+
+## Manual Start Locally
+
+Manual startup is useful when debugging a single service. For normal demo/recording, use the Docker Compose flow above.
 
 ### 1. Start `model-service`
 
@@ -185,7 +256,8 @@ The model service intentionally exits when that directory does not contain a loa
 Build and run the full stack:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
+docker compose ps
 ```
 
 Stop the stack:
@@ -213,16 +285,20 @@ Endpoints:
 
 ## Train flow
 
-1. Open `train/notebooks/main_PhoBERT.ipynb` in Colab.
+The training implementation is in `train/notebooks/main_PhoBERT.ipynb`. The app services do not retrain the model at startup; they only load the exported artifact from `train/artifacts/active/`.
+
+1. Open `train/notebooks/main_PhoBERT.ipynb` in Colab, Kaggle, or local Jupyter.
 2. Run all cells. The notebook downloads `dathuynh1108/vietnamnet-news` from Hugging Face when `./dataset` is empty, or materializes parquet files from `dataset/data_URLs.json` when provided.
-3. Train the model.
-4. Package the output:
+3. Train the model and export the Hugging Face/PhoBERT model directory.
+4. Copy/package the output into the runtime artifact folder:
 
 ```bash
 python train/scripts/package_run.py \
   --model-dir train/runs/model \
   --output-dir train/artifacts/active
 ```
+
+If the notebook ran outside this repo, copy the downloaded artifact folder into `train/artifacts/active/` before running `docker compose up --build -d`.
 
 ## Notes
 
